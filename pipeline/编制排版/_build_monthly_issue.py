@@ -59,17 +59,20 @@ def set_text(par, text, keep_drawing=False):
 
 
 def east_font(par):
-    """读段落的东亚字体名（run.font.name 读的是西文属性，改过西文字体后不可用）。"""
-    pPr = par._p.find(qn("w:pPr"))
-    if pPr is not None:
-        rPr = pPr.find(qn("w:rPr"))
+    """读段落的东亚字体名（run.font.name 读的是西文属性，改过西文字体后不可用）。
+
+    以**首个 run** 的 eastAsia 为准（模板样板的字体设在 run 上），再退回段落标记的 rPr。
+    """
+    r = par.runs[0]._element if par.runs else None
+    if r is not None:
+        rPr = r.find(qn("w:rPr"))
         if rPr is not None:
             rf = rPr.find(qn("w:rFonts"))
             if rf is not None and rf.get(qn("w:eastAsia")):
                 return rf.get(qn("w:eastAsia"))
-    r = par.runs[0]._element if par.runs else None
-    if r is not None:
-        rPr = r.find(qn("w:rPr"))
+    pPr = par._p.find(qn("w:pPr"))
+    if pPr is not None:
+        rPr = pPr.find(qn("w:rPr"))
         if rPr is not None:
             rf = rPr.find(qn("w:rFonts"))
             if rf is not None and rf.get(qn("w:eastAsia")):
@@ -125,29 +128,55 @@ def main():
                 return par._p
         raise SystemExit(f"未找到版式样板：{label}")
 
-    pat_title = find(lambda p: (p.text or "").strip() in ("【单位：文件标题】", "【文件标题】",
-                                                          "【报道标题】", "【案例标题】"),
-                     "文章标题")
-    # 来源行样板允许几种写法（模板可能被人工改过）；实在没有就退回正文段落样板
-    try:
+    # 模板样例已改为“真实示例文字”，版式样板改为**按格式识别**（字体＋字号＋加粗）：
+    # 比按占位文字更稳，模板里改成别的示例文字也能正确识别。
+    def size_pt(par):
+        if not par.runs:
+            return None
+        rpr = par.runs[0]._element.find(qn("w:rPr"))
+        if rpr is None:
+            return None
+        s = rpr.find(qn("w:sz"))
+        return int(s.get(qn("w:val"))) / 2 if s is not None else None
+
+    def by_format(east, size, bold=None):
+        for par in paras:
+            if not par.runs or not east_font(par).startswith(east) or size_pt(par) != size:
+                continue
+            if bold is True and not par.runs[0].bold:
+                continue
+            if bold is False and par.runs[0].bold:
+                continue
+            return par
+        return None
+
+    pat_title = find(lambda p: (p.text or "").strip().startswith("【省份】")
+                     or (p.text or "").strip() in ("【单位：文件标题】", "【文件标题】",
+                                                   "【报道标题】", "【案例标题】"), "文章标题")
+
+    fmt = {key: by_format(east, size, bold) for key, (east, size, bold) in
+           (("source", ("楷体_GB2312", 12, False)), ("body", ("仿宋_GB2312", 12, False)),
+            ("h1", ("黑体", 12, False)), ("h2", ("楷体_GB2312", 12, True)),
+            ("h3", ("仿宋_GB2312", 12, True)))}
+    if fmt["source"] is None or fmt["body"] is None:
+        print("  ! 未按格式识别到来源行/正文样板，回退到旧模板的占位文字识别"
+              "（建议重跑 _build_monthly_template.py 生成新模板）")
         pat_source = find(lambda p: (p.text or "").strip().startswith(("【发文字号】", "【来源", "来源：")),
                           "来源行")
-    except SystemExit:
-        pat_source = find(lambda p: (p.text or "").strip().startswith("【正文段落"), "正文段落")
-        print("  ! 模板缺少“来源行”样板，已改用正文段落样板")
-    pat_body = find(lambda p: (p.text or "").strip().startswith("【正文段落"), "正文段落")
-
-    # ---- 正文三级样板（与《政策要情》一致）：一级黑体小四、二级楷体小四加粗、正文小标题仿宋小四加粗 ----
-    def find_opt(token, label):
-        try:
-            return find(lambda p: token in (p.text or ""), label)
-        except SystemExit:
-            print("  ! 模板缺少“%s”样板，将沿用正文段落格式" % label)
-            return None
-
-    pat_h1 = find_opt("【一级标题】", "一级标题")
-    pat_h2 = find_opt("【二级标题】", "二级标题")
-    pat_h3 = find_opt("【正文小标题】", "正文小标题")
+        pat_body = find(lambda p: (p.text or "").strip().startswith("【正文段落"), "正文段落")
+        pat_h1 = pat_h2 = pat_h3 = None
+    else:
+        pat_source, pat_body = fmt["source"]._p, fmt["body"]._p
+        pat_h1 = fmt["h1"]._p if fmt["h1"] is not None else None
+        pat_h2 = fmt["h2"]._p if fmt["h2"] is not None else None
+        pat_h3 = fmt["h3"]._p if fmt["h3"] is not None else None
+        print("  样板（按格式识别）：来源行✓ 正文✓ 一级%s 二级%s 小标题%s"
+              % ("✓" if pat_h1 is not None else "×",
+                 "✓" if pat_h2 is not None else "×",
+                 "✓" if pat_h3 is not None else "×"))
+    for label, el in (("一级标题", pat_h1), ("二级标题", pat_h2), ("正文小标题", pat_h3)):
+        if el is None:
+            print("  ! 模板缺少“%s”样板，该级将沿用正文格式" % label)
 
     # 正文行分级：一、→一级标题；（一）/(一)→二级标题；1./1、→正文小标题；其余为正文
     RE_H1 = re.compile(r"^\s*[一二三四五六七八九十百]+\s*[、.．]")
@@ -273,13 +302,13 @@ def main():
             truncated = bool(CAP) and len(text) > CAP
             for seg in body_paragraphs(text[:CAP] if truncated else text):
                 lvl = level_of(seg)
-                if lvl == "h1" and pat_h1:
+                if lvl == "h1" and pat_h1 is not None:
                     label, rest = split_heading(seg)
                     newelems.append(clone_heading(pat_h1, label, rest))
-                elif lvl == "h2" and pat_h2:
+                elif lvl == "h2" and pat_h2 is not None:
                     label, rest = split_heading(seg)
                     newelems.append(clone_heading(pat_h2, label, rest))
-                elif lvl == "h3" and pat_h3:
+                elif lvl == "h3" and pat_h3 is not None:
                     label, rest = split_h3(seg)
                     newelems.append(clone_h3(pat_h3, label, rest))
                 else:
