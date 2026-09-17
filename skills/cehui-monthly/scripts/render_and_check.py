@@ -102,13 +102,18 @@ def main():
     text = re.sub(r"\s+", "", "".join(pages))
     n_src = text.count("来源：")
     n_link = text.count("原文链接：")
+    want_link = 1 if os.environ.get("CEHUI_SOURCE_LINK", "").strip().lower() in ("1", "true", "yes", "on") else 0
     checks = []
     checks.append(("页数>0", page_count > 0, "%d 页" % page_count))
     checks.append(("三栏目齐全", all(b in text for b in BOARDS), "、".join(b for b in BOARDS if b in text)))
     checks.append(("无“媒体动态类”", "媒体动态类" not in text, "0 处" if "媒体动态类" not in text else "仍出现"))
-    checks.append(("来源行＝原文链接", n_src == n_link and n_src > 0, "%d / %d" % (n_src, n_link)))
+    if want_link:
+        checks.append(("来源行＝原文链接", n_src == n_link and n_src > 0, "%d / %d" % (n_src, n_link)))
+    else:
+        checks.append(("正文不排原文链接（固定规则）", n_link == 0,
+                       "原文链接 %d 行（设 CEHUI_SOURCE_LINK=1 可改回排印）" % n_link))
     if args.expect_items:
-        checks.append(("条数符合预期", n_src == args.expect_items and n_link == args.expect_items,
+        checks.append(("条数符合预期", n_src == args.expect_items,
                        "期望 %d，实际 %d" % (args.expect_items, n_src)))
     checks.append(("封面红字刊名", "测绘地理信息月刊" in red_title, red_title or "未见大字号刊名"))
     checks.append(("正文页眉就位", bool(header) and bool(header_line),

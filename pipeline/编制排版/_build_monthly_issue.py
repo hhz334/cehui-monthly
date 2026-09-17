@@ -19,6 +19,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or os.path.dirname(BASE)
 sys.path.insert(0, os.path.join(TOOL_ROOT, "99_脚本"))
 from period_config import P  # noqa: E402
+import sources_whitelist as WL  # noqa: E402
 
 TPL = os.path.join(BASE, "测绘动态月刊_模板.docx")
 # 允许指定其它模板（例如先用临时模板试排）
@@ -299,6 +300,7 @@ def main():
             src = f"来源：{s.get('unit','')}"      # 只写来源单位，其余信息不入正文
             newelems.append(clone_keep(pat_source, src))
             text = s.get("原文正文") or s.get("摘要") or ""
+            text = WL.strip_sign_off(text)      # 固定规则：成刊删除文末署名（2026-09-17）
             truncated = bool(CAP) and len(text) > CAP
             for seg in body_paragraphs(text[:CAP] if truncated else text):
                 lvl = level_of(seg)
@@ -316,9 +318,10 @@ def main():
             if truncated:
                 newelems.append(clone(pat_body,
                                       f"（节选，全文 {len(text)} 字，见来源链接：{s.get('source_url_checked','')}）"))
-            # 文末附原文链接
+            # 文末原文链接：固定规则为“不排”（链接只留在目录表与 02_原文 归档）；
+            # 需要印出时设 CEHUI_SOURCE_LINK=1。
             link = s.get("source_url_checked") or ""
-            if link:
+            if link and WL.include_source_link():
                 link_el = clone(pat_source, f"原文链接：{link}")
                 docx.text.paragraph.Paragraph(link_el, d).paragraph_format.alignment = \
                     WD_ALIGN_PARAGRAPH.LEFT

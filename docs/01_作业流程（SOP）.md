@@ -246,6 +246,11 @@ python 99_脚本/34_add_toc_links.py "<成刊.docx>" -o "<成刊.docx>"    # 就
   - 导出 PDF 时（LibreOffice / WPS）内部链接会保留为可点击链接；`render_and_check.py` 渲染后把 PDF 复制到成刊同目录。
   - 页码按**文档页脚**“— N —”回填，不按 PDF 物理页序；重排/换模板后务必重跑本步。
   - 验收：目录条目链接数＝条目数；抽 3 条比对“目录标注页码＝目标页页脚页码”。
+- **成刊两条固定规则（2026-09-17 定）**：
+  1. **正文不排“原文链接”行**（链接只留在 `00_资讯目录` 与 `02_原文` 归档）；需要恢复排印时设 `CEHUI_SOURCE_LINK=1` 再重跑阶段B。
+  2. **文末署名统一删除**（（刘某）、（单位 单位）、`××/摄`、`×× 供图`、图片说明行）；`02_原文` 归档保留原文署名，
+     正文里的“（详见下表）”类说明不删。实现见 `sources_whitelist.strip_sign_off()`。
+  两条都由阶段B自动执行，`render_and_check.py` 会校验“原文链接 0 行”。
 
 ### S11 收尾自检（0.2 天）
 
@@ -317,6 +322,7 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 | `powershell -File xx.ps1` 报 ParserError／中文乱码 | .ps1 存成 UTF-8 **无 BOM**，PowerShell 5.1 按 ANSI 读 | 用“UTF-8 带 BOM”重存（仓库里的 .ps1 均已带 BOM；改动后务必确认） |
 | 目录页码与实际不符 | 人工增删页后未重排 | 跑 `34_add_toc_links.py`：按页脚“— N —”回填页码（本期修正 45→46、48→49） |
 | PDF 里目录点不动 | 目录未加内部超链接，或转换工具未保留 | 跑 `34` 后再导出（LibreOffice/WPS 都会保留内部链接） |
+| 成刊正文出现“原文链接：…” / 文末出现“（刘某）” | 固定规则未生效（用了旧版脚本） | 确认 `_build_monthly_issue.py` 调用了 `WL.include_source_link()` 与 `WL.strip_sign_off()`；重跑阶段B |
 
 ## 八、下期开工模板
 

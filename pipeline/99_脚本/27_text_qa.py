@@ -32,6 +32,31 @@ OUT_JSON = os.path.join(RAW, "text_qa.json")
 
 # 审核版里“页面元素”性质的段落，比对时不算缺失
 SIGN_OFF_RE = re.compile(r"^(?:[\u4e00-\u9fa5]{2,4}(?:/摄|供图|摄)|[\u4e00-\u9fa5]{2,4}[\s\u3000][\u4e00-\u9fa5]{2,4})$")
+# 成刊“固定规则”下有意不排的段落（2026-09-17 定：署名删除、原文链接不排印）
+INTENDED_PATTERNS = [
+    r"^图[为注]",
+    r"^\d{1,2}$",                                  # 01 / 02 / 03 小节序号
+    r"以下为图文实录[:：]?$",
+    r"^(?:识别|扫描|长按|点击|微信扫一扫)[^\n。]{0,20}$",
+    r"^[^\n]{0,24}(?:供图|/\s*摄|摄影)\s*$",
+    r"^原文链接[:：]",
+    r"^[^\n。]{0,24}(司长|主任|副主任|局长|厅长|院长|书记|巡视员|副主任)[:：]?$",
+]
+INTENDED_RE = re.compile("|".join(INTENDED_PATTERNS))
+
+
+def intended_drop(line):
+    """返回该段是否属于“按固定规则有意不排”（署名、图片说明、页面提示、原文链接等）。"""
+    s = (line or "").strip()
+    if not s:
+        return True
+    if INTENDED_RE.search(s) or SIGN_OFF_RE.match(s):
+        return True
+    if WL.strip_sign_off(s) != s:          # 文末署名（（刘某）、（单位 单位））
+        return True
+    if len(s) <= 30 and not re.search(r"[。；，、]", s) and re.search(r"(局长|司长|主任|厅长|院长)", s):
+        return True
+    return False
 
 
 def norm(s):
@@ -125,7 +150,8 @@ def main():
         hs, ps = [norm(t) for t in body], [norm(t) for t in pb]
         missing = [t for t in pb if norm(t) not in hs]          # 原文有、审核版无
         extra = [t for t in body if norm(t) not in ps]          # 审核版有、原文无
-        missing = [t for t in missing if not SIGN_OFF_RE.match(t)]
+        intended = [t for t in missing if intended_drop(t)]      # 固定规则下有意不排
+        missing = [t for t in missing if not intended_drop(t)]   # 需要人工判断的缺段
         si = []
         for t in body:
             si += [("%s｜%s" % (kind, seg)) for kind, seg in space_issues(t)]
@@ -136,7 +162,7 @@ def main():
         report["items"].append({"doc_title": title, "sel_title": it["title"],
                                 "match": round(score, 2), "space": si,
                                 "quality": qi, "missing_from_doc": missing,
-                                "extra_in_doc": extra})
+                                "intended_drop": intended, "extra_in_doc": extra})
         md += ["## %s" % title, "",
                "- 选目对应：%s（匹配度 %.2f）｜审核版 %d 段 / 原文 %d 段"
                % (it["title"], score, len(body), len(pb))]
@@ -150,6 +176,9 @@ def main():
         if extra:
             md += ["", "**审核版有、原文无（%d）**" % len(extra)] + \
                   ["- %s" % t[:120] for t in extra]
+        if intended:
+            md += ["", "**按固定规则有意不排（%d）**：署名／图片说明／页面提示／原文链接" % len(intended)] + \
+                  ["- %s" % t[:90] for t in intended]
         md += [""]
 
     report["summary"] = {"条数": len(entries), "空格问题": n_space,

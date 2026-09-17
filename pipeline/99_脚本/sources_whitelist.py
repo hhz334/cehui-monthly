@@ -7,6 +7,7 @@
 3. 目录只保留三个板块：政策法规、技术应用类、科技前沿类（2026-09-17 起取消“媒体动态类”）；
 4. 每条动态按 10 条业务条线打标。
 """
+import os
 import re
 
 # ---------------------------------------------------------------- 官网白名单
@@ -510,6 +511,63 @@ def normalize_text(text):
         t = re.sub(r"(?<=[%s])%s(?=[%s])" % (CJK, re.escape(half), CJK), full, t)
     t = re.sub(r"[ \t]{2,}", " ", t)
     return t
+
+
+# ------------------------------------------------- 成刊体例：署名删除 / 原文链接开关
+# 2026-09-17 依领导审核版固化为固定规则：
+#   规则一：成刊正文**不排**“原文链接：”行（链接留在 00_资讯目录 与 02_原文 归档里）；
+#           需要印出来时设环境变量 CEHUI_SOURCE_LINK=1 即可恢复。
+#   规则二：文末供稿署名（（姓名）、（姓名 姓名）、××/摄、×× 供图）**统一删除**。
+SOURCE_LINK_DEFAULT = False
+# 行末括号里的署名：内容≤30 字、没有句读，且“含摄/供图/供稿”或“以单位后缀结尾”
+SIGN_OFF_BRACKET = re.compile(r"[（(][^（）()]{1,30}[）)]\s*$")
+SIGN_OFF_UNIT = re.compile(r"(中心|处|室|科|院|局|所|站|公司|协会|支队|大队|办公室)$")
+SIGN_OFF_WORD = re.compile(r"(摄|供图|摄影|供稿|撰稿)")
+# 独立成行、以“供图/摄”收尾的图片说明行整行删除
+SIGN_OFF_LINE = re.compile(r"^[^\n]{0,60}(供图|摄影|/\s*摄)\s*$")
+SENT_END = "。！？…”’"
+# 括号里出现这些字，说明是正文成分（“详见下表”“以下简称…”），不是署名
+SIGN_OFF_STOP_CHARS = "见表图如下上以及和与等详其中"
+
+
+def include_source_link():
+    """成刊是否排“原文链接：”行（默认否；CEHUI_SOURCE_LINK=1 打开）。"""
+    env = (os.environ.get("CEHUI_SOURCE_LINK") or "").strip().lower()
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if env in ("0", "false", "no", "off"):
+        return False
+    return SOURCE_LINK_DEFAULT
+
+
+def strip_sign_off(text):
+    """删除文末供稿署名（成刊规则二）；只动每段末尾／独立成行的署名，不动正文里的括号说明。"""
+    if not text:
+        return text
+    out = []
+    for line in text.split("\n"):
+        s = line.rstrip()
+        if not s.strip():
+            out.append(s)
+            continue
+        if SIGN_OFF_LINE.match(s.strip()) and ("供图" in s or "摄" in s):
+            continue                              # 图片说明/署名整行
+        for _ in range(2):
+            m = SIGN_OFF_BRACKET.search(s)
+            if not m:
+                break
+            inner = m.group(0).strip().strip("（）()").strip()
+            prefix = s[:m.start()].rstrip()
+            plain_name = (re.fullmatch(r"[\u4e00-\u9fa5]{2,4}", inner)
+                          and not set(inner) & set(SIGN_OFF_STOP_CHARS))
+            if (not inner or not re.search(r"[\u4e00-\u9fa5]", inner)
+                    or SIGN_OFF_UNIT.search(inner) or SIGN_OFF_WORD.search(inner)
+                    or (prefix and prefix[-1] in SENT_END) or plain_name):
+                s = prefix
+            else:
+                break
+        out.append(s)
+    return "\n".join(out)
 
 
 def check_text_quality(text, title=""):
