@@ -210,7 +210,8 @@ def main():
         if resolved_date and not (P.window_from <= resolved_date <= P.window_to):
             backup.append((sel, f"发布日期 {resolved_date} 不在本期窗口（{P.window_from}~{P.window_to}）"))
             continue
-        board = sel.get("board") or WL.board_of(module, title, sel.get("summary", ""), note)
+        # 归一到现行板块名（历史语料里可能是“政策类”“媒体动态类”）
+        board = WL.board_name(sel.get("board") or WL.board_of(module, title, sel.get("summary", ""), note))
         if sel.get("restored_from_appendix"):
             board = "政策法规"
         hits = WL.business_of(title, sel.get("summary", ""), sel.get("keywords", ""))
@@ -227,7 +228,7 @@ def main():
 
     # ---- 排序：板块 → 层级 → 日期倒序 ----
     level_order = {"部级": 0, "行业与官媒": 1, "外省": 2}
-    kept.sort(key=lambda r: (WL.BOARDS.index(r["board"]),
+    kept.sort(key=lambda r: (WL.BOARDS.index(WL.board_name(r["board"])),
                              level_order.get(r.get("level", ""), 9),
                              r.get("date_override") or "", r.get("title", "")))
     save_json(OUT_SEL, kept)

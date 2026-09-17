@@ -85,7 +85,8 @@ def parse_items(lines):
             continue
         m = re.match(r"^(%s)（\s*\d*\s*条）$" % "|".join(BOARDS + ("政策类", "媒体动态类")), l)
         if m:
-            sec = WL.board_name(m.group(1))      # 旧板块名（如“政策类”）归一为现行名
+            # 只归一“改名”的板块；已取消的“媒体动态类”保留原名（它是该批注版里的真实栏目）
+            sec = {"政策类": "政策法规"}.get(m.group(1), m.group(1))
             continue
         m1 = re.match(r"^(\d{1,3})?\.?\s*【(.+?)】\s*(.+)$", l)
         m2 = re.match(r"^(\d{2})(\d{2})\s{1,3}(.+)$", l)
