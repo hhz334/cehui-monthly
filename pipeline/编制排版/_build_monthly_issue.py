@@ -20,6 +20,8 @@ sys.path.insert(0, os.path.join(TOOL_ROOT, "99_脚本"))
 from period_config import P  # noqa: E402
 
 TPL = os.path.join(BASE, "测绘动态月刊_模板.docx")
+# 允许指定其它模板（例如先用临时模板试排）
+TPL = os.environ.get("CEHUI_TEMPLATE") or TPL
 ISSUE_DIR = P.issue_dir
 SEL = os.path.join(P.sel_dir, "catalog_selection_final.json")
 TOC_MAP = os.path.join(BASE, "_tmpl_tmp", "toc_pages.json")
@@ -133,6 +135,38 @@ def main():
         pat_source = find(lambda p: (p.text or "").strip().startswith("【正文段落"), "正文段落")
         print("  ! 模板缺少“来源行”样板，已改用正文段落样板")
     pat_body = find(lambda p: (p.text or "").strip().startswith("【正文段落"), "正文段落")
+
+    # ---- 正文三级样板（与《政策要情》一致）：一级黑体小四、二级楷体小四加粗、正文小标题仿宋小四加粗 ----
+    def find_opt(token, label):
+        try:
+            return find(lambda p: token in (p.text or ""), label)
+        except SystemExit:
+            print("  ! 模板缺少“%s”样板，将沿用正文段落格式" % label)
+            return None
+
+    pat_h1 = find_opt("【一级标题】", "一级标题")
+    pat_h2 = find_opt("【二级标题】", "二级标题")
+    pat_h3 = find_opt("【正文小标题】", "正文小标题")
+
+    # 正文行分级：一、→一级标题；（一）/(一)→二级标题；1./1、→正文小标题；其余为正文
+    RE_H1 = re.compile(r"^\s*[一二三四五六七八九十百]+\s*[、.．]")
+    RE_H2 = re.compile(r"^\s*[（(]\s*[一二三四五六七八九十百]+\s*[）)]")
+    RE_H3 = re.compile(r"^\s*\d{1,2}\s*[、.．]")
+
+    def level_of(line):
+        if RE_H1.match(line):
+            return "h1"
+        if RE_H2.match(line):
+            return "h2"
+        if RE_H3.match(line):
+            return "h3"
+        return "body"
+
+    def split_h3(line):
+        """正文小标题：把“1.标签：”部分单独拿出来加粗（与《政策要情》一致）。"""
+        m = re.match(r"^(.{0,24}?[：:])(.+)$", line)
+        return (m.group(1), m.group(2)) if m else ("", line)
+
     pat_toc = find(lambda p: (p.style.name or "").startswith("WPSOffice手动目录"), "目录条目")
     pat_head = find(lambda p: bool(p.runs) and east_font(p).startswith("黑体")
                     and (p.text or "").strip()[:2] in ("一、", "二、", "三、", "四、"), "栏目名")
@@ -151,6 +185,27 @@ def main():
         """标题与来源行加"与下段同页"，避免标题落在页底。"""
         el = clone(pattern, text)
         docx.text.paragraph.Paragraph(el, d).paragraph_format.keep_with_next = True
+        return el
+
+    def clone_h3(pattern, label, rest):
+        """正文小标题：标签加粗、其后正文不加粗（沿用样板的中文字体与字号）。"""
+        el = copy.deepcopy(pattern)
+        par = docx.text.paragraph.Paragraph(el, d)
+        runs = par.runs
+        if not runs:
+            par.add_run(label or rest)
+            if label and rest:
+                par.add_run(rest)
+            return el
+        runs[0].text = label or rest
+        for extra in runs[1:]:
+            extra._element.getparent().remove(extra._element)
+        if label and rest:
+            r2 = copy.deepcopy(runs[0]._element)     # 继承字体与字号
+            par._p.append(r2)
+            runs2 = docx.text.paragraph.Paragraph(el, d).runs
+            runs2[-1].text = rest
+            runs2[-1].font.bold = None              # 只有标签部分加粗
         return el
 
     # ---- 定位分节符 ----
@@ -192,7 +247,16 @@ def main():
             text = s.get("原文正文") or s.get("摘要") or ""
             truncated = bool(CAP) and len(text) > CAP
             for seg in body_paragraphs(text[:CAP] if truncated else text):
-                newelems.append(clone(pat_body, seg))
+                lvl = level_of(seg)
+                if lvl == "h1" and pat_h1:
+                    newelems.append(clone(pat_h1, seg))
+                elif lvl == "h2" and pat_h2:
+                    newelems.append(clone(pat_h2, seg))
+                elif lvl == "h3" and pat_h3:
+                    label, rest = split_h3(seg)
+                    newelems.append(clone_h3(pat_h3, label, rest))
+                else:
+                    newelems.append(clone(pat_body, seg))
             if truncated:
                 newelems.append(clone(pat_body,
                                       f"（节选，全文 {len(text)} 字，见来源链接：{s.get('source_url_checked','')}）"))

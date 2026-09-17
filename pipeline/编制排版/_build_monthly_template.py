@@ -14,10 +14,14 @@ import docx
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-BASE = r"<工作根 ToolRoot>\编制排版"
-REF = os.path.join(BASE, "政策要情第一百期8月30日.docx")
+BASE = os.path.dirname(os.path.abspath(__file__))          # 编制排版目录
+# 参考件：默认取同目录的《政策要情》出版物；可用 CEHUI_TEMPLATE_REF 指定其它参考件
+REF = os.environ.get("CEHUI_TEMPLATE_REF") or os.path.join(BASE, "政策要情第一百期8月30日.docx")
 OUT_DOCX = os.path.join(BASE, "测绘动态月刊_模板.docx")
 OUT_DOTX = os.path.join(BASE, "测绘动态月刊_模板.dotx")
+# 允许外部指定输出（正式文件被 WPS/Word 占用时可先写到临时文件）
+OUT_DOCX = os.environ.get("CEHUI_TEMPLATE_OUT") or OUT_DOCX
+OUT_DOTX = os.environ.get("CEHUI_TEMPLATE_DOTX") or OUT_DOTX
 
 BOARDS = ["政策类", "技术应用类", "科技前沿类"]
 # 封面红字刊名（沿用《政策要情》版式：方正小标宋简体、36pt、C00000）
@@ -75,6 +79,47 @@ def is_centered(par):
     return par.alignment is not None and int(par.alignment) == 1
 
 
+# ---------------- 正文三级格式（与《政策要情》第 100 期一致） ----------------
+# 一级标题：黑体 小四（12pt）不加粗；二级标题：楷体_GB2312 小四 加粗；
+# 正文小标题：仿宋_GB2312 小四 加粗（仅“标签：”部分加粗）；正文：仿宋_GB2312 小四。
+LEVEL_FORMATS = {
+    "h1": ("黑体", 12, False, 304800),
+    "h2": ("楷体_GB2312", 12, True, 306070),
+    "h3": ("仿宋_GB2312", 12, True, 306070),
+    "body": ("仿宋_GB2312", 12, False, 304800),
+}
+
+
+def set_level_format(par, level, label=None, rest=None):
+    """把段落设置成指定级别的字体/字号/加粗与首行缩进；h3 可拆成“加粗标签＋正文”。"""
+    east, size_pt, bold, indent = LEVEL_FORMATS[level]
+    if label is None:
+        set_text(par, par.text)
+        style_run(par.runs[0], east, size_pt, bold)
+    else:
+        set_text(par, label)
+        style_run(par.runs[0], east, size_pt, True)
+        if rest:
+            style_run(par.add_run(rest), east, size_pt, None)
+    if indent:
+        par.paragraph_format.first_line_indent = indent
+    return par
+
+
+def style_run(run, east, size_pt=12, bold=None):
+    """设置 run 的中文字体（ascii 交给 _set_latin_font 统一成 Times New Roman）。"""
+    from docx.shared import Pt
+    rpr = run._element.get_or_add_rPr()
+    fonts = rpr.find(qn("w:rFonts"))
+    if fonts is None:
+        fonts = OxmlElement("w:rFonts")
+        rpr.insert(0, fonts)
+    fonts.set(qn("w:eastAsia"), east)
+    run.font.size = Pt(size_pt)
+    run.font.bold = bold
+    return run
+
+
 def is_hei(par):
     return bool(par.runs) and (par.runs[0].font.name or "").startswith("黑体")
 
@@ -113,10 +158,16 @@ def main():
     set_text(P[26], "【发文字号】")
     set_text(P[28], "【主送单位：】")
     set_text(P[29], "【正文段落：说明发文背景、依据与目的。】")
-    set_text(P[30], "一、【小标题】")
+    set_text(P[30], "一、【一级标题】")
     set_text(P[31], "【正文段落。】")
-    set_text(P[32], "二、【小标题】")
-    set_text(P[33], "【正文段落。】")
+    set_text(P[32], "（一）【二级标题】")
+    # 正文小标题示例：仅“标签：”部分加粗（与《政策要情》一致）
+    set_level_format(P[33], "h3", label="1.【正文小标题】：", rest="【正文内容。】")
+    # 正文三级格式（依《政策要情》第 100 期）：一级黑体小四、二级楷体小四加粗、小标题仿宋小四加粗、正文仿宋小四
+    set_level_format(P[29], "body")
+    set_level_format(P[30], "h1")
+    set_level_format(P[31], "body")
+    set_level_format(P[32], "h2")
     sign_unit = copy.deepcopy(P[60]._p)
     sign_date = copy.deepcopy(P[61]._p)
     P[33]._p.addnext(sign_date)
@@ -133,25 +184,32 @@ def main():
         if is_centered(P[i]) or is_hei(P[i]):
             sub_no += 1
             set_text(P[i], "【小标题】" if sub_no <= 1 else "")
+            if sub_no == 1:
+                set_level_format(P[i], "h2")
         else:
             body_no += 1
             set_text(P[i], "【导语：交代事件、时间、地点与主体。】" if first_body
                      else ("【正文段落。】" if body_no <= 3 else ""))
+            if P[i].text:
+                set_level_format(P[i], "body")
             first_body = False
     section3_sample = [P[i]._p for i in (379, 380, 381, 382, 383)]   # 标题+小标题+导语+正文
 
     # ---------- 节4：科技前沿类（案例式样例）----------
     set_text(P[577], "【案例标题】")
     set_text(P[578], "【副标题（可留空）】")
+    style_run(P[578].runs[0], "楷体_GB2312", 12, True)
     sub_no = 0
     for i in range(579, 592):
         if not (P[i].text or "").strip():
             continue
         if is_hei(P[i]):
             sub_no += 1
-            set_text(P[i], f"{'一二三四五六七八九十'[sub_no - 1]}、【小标题】")
+            set_text(P[i], f"{'一二三四五六七八九十'[sub_no - 1]}、【一级标题】")
+            set_level_format(P[i], "h1")
         elif not is_centered(P[i]):
             set_text(P[i], "【正文段落：做法、成效与评析。】")
+            set_level_format(P[i], "body")
 
     # ---------- 删除多余内容 ----------
     def drop(start, end, protect=()):
