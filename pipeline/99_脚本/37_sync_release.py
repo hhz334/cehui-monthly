@@ -61,7 +61,7 @@ def plan():
     """返回 [(源文件, 发布包目标路径)]。"""
     out = []
     for name in sorted(os.listdir(os.path.join(TOOL, "99_脚本"))):
-        if name.startswith("_") or not name.endswith(".py"):
+        if name.startswith("_") or not name.endswith((".py", ".ps1")):
             continue
         out.append((os.path.join(TOOL, "99_脚本", name),
                     os.path.join(REL, "pipeline", "99_脚本", name)))
