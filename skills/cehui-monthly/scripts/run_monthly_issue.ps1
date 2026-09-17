@@ -141,4 +141,13 @@ if ($code -eq 0) {
     if (Test-Path $target) { Write-Host "[交付] PDF：$target" }
 }
 if ($code -eq 0) { Write-Host "[完成] 阶段B 结束：$docx" } else { Write-Warning "版式体检未全部通过，请逐项核对。" }
+
+# ---- WPS 分页复核（Word/WPS 与 PDF 必须逐篇一致）----
+if ($code -eq 0 -and -not $Forward) {
+    Write-Host "[复核] 在 WPS 里重新分页，核对 Word 与 PDF 是否一致"
+    $wpsScript = Join-Path $ToolRoot "99_脚本\44_check_wps_pagination.ps1"
+    if (Test-Path $wpsScript) {
+        & powershell -NoProfile -File $wpsScript -Docx $docx 2>&1 | ForEach-Object { Write-Host ("    " + $_) }
+    }
+}
 exit $code

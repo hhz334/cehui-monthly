@@ -37,6 +37,13 @@ description: 生成福建省测绘地理信息发展中心的《测绘动态工�
     `U+00A0／U+200A／U+2004` 等特殊空白一律清除，汉字间半角标点转全角；**保留**法条标题（`第一章 总 则`）、
     引号内标语、页脚“— 1 —”与目录制表位。抓取端的页面家具正则**不得贪吃正文**（曾把“用手机**扫一扫随机获取
     的地图，系统即可自动识别**…”整句误删）。成稿后跑 `27_text_qa.py` ＋ `33_fix_docx_text.py`。
+13. **排版口径按《政策要情》第 100 期**：①**保留中文标点压缩**（`characterSpacingControl=compressPunctuation`）；
+    ②**封面与目录不计入页码**，正文从第 1 页起；③**Word/WPS 与 PDF 的分页、页码必须逐篇一致**。
+    关键坑：LibreOffice 直接打开 docx 会把标点压缩读成 0（分页变松），所以出 PDF 必须走
+    `render_compressed.compressed_pdf()`（docx → ODT 设 `CharacterCompressionType=1` → PDF），
+    页码回填（34）、页脚缓存（39）、导出（41）共用这条链；最后用 `44_check_wps_pagination.ps1` 在 WPS 里复核。
+14. **字体必须用原版**：仿宋_GB2312（正文）、楷体_GB2312（二级标题/来源行）、黑体（一级标题）、方正小标宋简体（刊名）。
+    系统自带的“楷体/KaiTi”**不是**楷体_GB2312；缺字体时 `41_export_pdf.py` 会报警且**不悄悄顶替**。
 
 ## 阶段 A：初稿目录生成
 
@@ -66,6 +73,12 @@ powershell -File "~/.codex/skills/cehui-monthly\scripts\run_monthly_issue.ps1" `
   （署名/图片说明/页面提示＝人工有意删除，其余按漏字补回）。
 - **目录跳转**（脚本已内置）：`34_add_toc_links.py` 就地给目录加书签与内部超链接，并按页脚回填页码；
   渲染后的 PDF 复制到成刊同目录一并交付（Word 与 PDF 里都能点击跳转）。
+- **排版口径与顺序**（阶段B 已内置，顺序不可乱）：
+  `43_normalize_layout.py`（标点压缩=100 期口径）→ `42_set_page_numbering.py --mode body`（封面/目录不计入页码）
+  → `34_add_toc_links.py`（目录书签＋超链接＋按页脚回填页码）→ `39_fix_footer_page_cache.py`（页脚 PAGE 域缓存＋打开时更新域）
+  → `40_fix_footer_layout.py`（页码居中、各节页脚等高）→ 渲染体检 → `41_export_pdf.py`（原版字体＋标点压缩口径导 PDF＋页码标签）。
+- **WPS 复核**（出刊后必做）：`powershell -NoProfile -File 99_脚本\44_check_wps_pagination.ps1 -Docx "<成刊.docx>"`
+  输出 WPS 总页数与每篇页码；应为"WPS 总页数＝PDF 页数"，且每篇"WPS 物理页 − 封面目录页数 ＝ 目录页码 ＝ PDF 页脚"。
 - 版式要点、模板重建与常见排版问题见 [references/b-月刊排版.md](references/b-月刊排版.md)。
 
 ## 交付前自检

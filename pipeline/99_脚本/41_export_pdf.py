@@ -187,6 +187,7 @@ def main():
         print("   这些字体在导 PDF 时会被替代字体顶替。要原版字体，请把字体文件装到：")
         for d in FONT_DIRS:
             print("     %s" % d)
+        print("   （注：像 `CESI仿宋-GB2312` 这类只出现在 VML 兜底分支里的字体，LibreOffice/WPS 导出时并不使用，可忽略）")
         if not a.allow_substitute:
             print("   已按“原版字体优先”导出：不替换字体名（缺的字体由 LibreOffice 自行回退）。")
             mapping = []
