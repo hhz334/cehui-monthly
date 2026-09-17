@@ -1,0 +1,3 @@
+interface:
+  display_name: "测绘动态月刊"
+  short_description: "初稿资讯目录生成与月刊排版：三板块选目、来源实体校验、全文换行保留、成刊版式与页码收敛"

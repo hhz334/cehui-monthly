@@ -1,0 +1,16 @@
+{
+  "issue_name": "2026年X-X月测绘动态资讯",
+  "issue_dir": "<工作根 ToolRoot>\\2026年X-X月测绘动态资讯",
+  "window_from": "2026-XX-XX",
+  "window_to": "2026-XX-XX",
+  "collect_date": "2026-XX-XX",
+  "title_range": "2026年X月X日—X月X日",
+  "issue_label": "2026年第N期",
+  "publish_date": "2026年X月X日",
+  "editor_unit": "福建省测绘地理信息发展中心",
+  "draft_target": 35,
+  "final_target_low": 20,
+  "final_target_high": 25,
+  "leader_label": "",
+  "selection_report": "选目构成说明.md"
+}
