@@ -137,6 +137,33 @@ def to_pdf(docx, outdir):
     return ""
 
 
+def set_page_labels(pdf_path, front_pages):
+    """给 PDF 打页码标签：前 front_pages 页标 i、ii…，其余从 1 开始。
+
+    这样阅读器的页码框里，正文第 1 页显示的就是“1”，与页脚页码、目录页码一致
+    （封面与目录仍不计入正文页码）。
+    """
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.generic import (ArrayObject, DictionaryObject, NameObject,
+                               NumberObject)
+    reader = PdfReader(pdf_path)
+    writer = PdfWriter(clone_from=reader)
+    nums = ArrayObject()
+    nums.append(NumberObject(0))
+    nums.append(DictionaryObject({NameObject("/S"): NameObject("/R"),
+                                  NameObject("/St"): NumberObject(1)}))
+    nums.append(NumberObject(front_pages))
+    nums.append(DictionaryObject({NameObject("/S"): NameObject("/D"),
+                                  NameObject("/St"): NumberObject(1)}))
+    writer._root_object[NameObject("/PageLabels")] = DictionaryObject(
+        {NameObject("/Nums"): nums})
+    tmp = pdf_path + ".labels"
+    with open(tmp, "wb") as fh:
+        writer.write(fh)
+    os.replace(tmp, pdf_path)
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src")
@@ -144,6 +171,8 @@ def main():
     ap.add_argument("--map", action="append", default=[])
     ap.add_argument("--allow-substitute", action="store_true",
                     help="缺字体时允许用等价字体顶替（默认不允许，只报警）")
+    ap.add_argument("--page-labels", type=int, default=2,
+                    help="封面+目录的页数；给 PDF 打页码标签，让阅读器页码＝页脚页码（默认 2，设 0 关闭）")
     ap.add_argument("--report", default="")
     a = ap.parse_args()
     out = a.out or os.path.splitext(a.src)[0] + ".pdf"
@@ -169,6 +198,8 @@ def main():
     if not pdf:
         print("导出失败：找不到可用的 LibreOffice")
         return 1
+    if a.page_labels > 0:
+        set_page_labels(pdf, a.page_labels)
     shutil.copyfile(pdf, out)
     shutil.rmtree(tmpdir, ignore_errors=True)
     print("字体替换：%s" % (hits or "无需要替换"))
