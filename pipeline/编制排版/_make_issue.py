@@ -80,12 +80,20 @@ def main():
 def deliver():
     """把工作副本落到正式文件名；若被 Word/WPS 占用则另存为"全文版"。"""
     import shutil
+    tmp = WORK_DOCX
+    # 目录加内部书签与超链接（Word 与导出的 PDF 都能点击跳转）
+    linker = os.path.join(TOOL_ROOT, "99_脚本", "34_add_toc_links.py")
+    if os.path.exists(linker):
+        linked = os.path.join(os.path.dirname(WORK_DOCX), "issue_linked.docx")
+        subprocess.run([PY, linker, WORK_DOCX, "-o", linked], check=False, capture_output=True)
+        if os.path.exists(linked):
+            tmp = linked
     try:
-        shutil.copyfile(WORK_DOCX, FINAL_DOCX)
+        shutil.copyfile(tmp, FINAL_DOCX)
         print("正式文件已更新：", FINAL_DOCX)
     except PermissionError:
         alt = os.path.join(os.path.dirname(FINAL_DOCX), P.issue_file_stem + "_全文版.docx")
-        shutil.copyfile(WORK_DOCX, alt)
+        shutil.copyfile(tmp, alt)
         print("正式文件被占用（正打开），已另存：", alt)
     return 0
 

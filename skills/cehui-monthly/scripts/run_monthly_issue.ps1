@@ -90,9 +90,19 @@ $clean = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($docx0),
 Write-Host "[核校] 体例体检 27 + 空格标点核校 33"
 & $Python (Join-Path $ToolRoot "99_脚本\27_text_qa.py") --doc $docx0 `
     --out (Join-Path $PeriodDir "_备查\文本体例检查.md")
-& $Python (Join-Path $ToolRoot "99_脚本\33_fix_docx_text.py") $docx0 -o $clean `
-    --report (Join-Path $PeriodDir "_备查\成稿空格核校.md")
-if (Test-Path $clean) { $docx0 = $clean }
+$out33 = & $Python (Join-Path $ToolRoot "99_脚本\33_fix_docx_text.py") $docx0 -o $clean `
+    --report (Join-Path $PeriodDir "_备查\成稿空格核校.md") 2>&1
+$out33 | ForEach-Object { Write-Host ("    " + $_) }
+if ($out33 -match "命中：无") {
+    Write-Host "    文本已干净，沿用原成稿文件"
+} elseif (Test-Path $clean) {
+    $docx0 = $clean
+}
+
+# ---- 目录加内部跳转链接（Word 与 PDF 都能点击）----
+Write-Host "[跳转] 目录书签与超链接 34"
+& $Python (Join-Path $ToolRoot "99_脚本\34_add_toc_links.py") $docx0 -o $docx0 `
+    --report (Join-Path $PeriodDir "_备查\目录跳转链接.md") | Out-Null
 
 # ---- 渲染与体检 ----
 $docx = $docx0
@@ -102,5 +112,15 @@ $checkArgs = @((Join-Path $PSScriptRoot "render_and_check.py"), $PeriodDir, "--d
 if ($NoPng) { $checkArgs += "--no-png" }
 & $Python @checkArgs
 $code = $LASTEXITCODE
+# 把渲染出的 PDF 复制到成刊同目录（文件名与成刊一致），随刊交付可点击的 PDF
+if ($code -eq 0) {
+    $pdf = Get-ChildItem -LiteralPath $outdir -Filter *.pdf -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($pdf) {
+        $target = Join-Path ([System.IO.Path]::GetDirectoryName($docx)) ([System.IO.Path]::GetFileNameWithoutExtension($docx) + ".pdf")
+        Copy-Item -LiteralPath $pdf.FullName -Destination $target -Force
+        Write-Host "[交付] PDF：$target"
+    }
+}
 if ($code -eq 0) { Write-Host "[完成] 阶段B 结束：$docx" } else { Write-Warning "版式体检未全部通过，请逐项核对。" }
 exit $code

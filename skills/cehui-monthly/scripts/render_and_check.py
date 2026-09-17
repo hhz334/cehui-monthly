@@ -12,6 +12,7 @@ import argparse
 import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -29,11 +30,23 @@ def find_render_docx():
     return sorted(hits)[-1] if hits else ""
 
 
+def find_soffice():
+    """定位 LibreOffice：优先常见安装路径，其次 PATH。"""
+    for cand in (r"C:\Program Files\LibreOffice\program\soffice.exe",
+                 r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+                 "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+                 "/usr/bin/soffice", "/usr/local/bin/soffice"):
+        if os.path.exists(cand):
+            return cand
+    return shutil.which("soffice") or ""
+
+
 def render(docx_path, outdir, want_png=True):
     os.makedirs(outdir, exist_ok=True)
     renderer = find_render_docx()
     env = dict(os.environ)
-    env["PATH"] = r"C:\Program Files\LibreOffice\program;" + env.get("PATH", "")
+    soffice = find_soffice()
+    env["PATH"] = (os.path.dirname(soffice) + os.pathsep + env.get("PATH", "")) if soffice else env.get("PATH", "")
     env["PYTHONIOENCODING"] = "utf-8"
     if renderer and want_png:
         # documents 技能渲染器：同时产出 PDF 与逐页 PNG 预览
@@ -41,8 +54,11 @@ def render(docx_path, outdir, want_png=True):
                        env=env, check=False, capture_output=True)
     else:
         # 只要 PDF（--no-png）或未找到渲染器：直接用 LibreOffice 转换
-        subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
-                       env=env, check=False, capture_output=True)
+        if not soffice:
+            print("  ! 未找到 LibreOffice（soffice），无法导出 PDF；请安装或把 soffice 加入 PATH")
+        else:
+            subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
+                           env=env, check=False, capture_output=True)
     pdfs = [p for p in glob.glob(os.path.join(outdir, "*.pdf"))]
     return max(pdfs, key=os.path.getmtime) if pdfs else ""
 

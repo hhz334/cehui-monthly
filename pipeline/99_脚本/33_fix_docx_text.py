@@ -110,8 +110,10 @@ def main():
         print("[%s] %s\n    旧：%s\n    新：%s"
               % (p, "、".join(sorted(set(notes))), old[:80], new[:80]))
     print("命中：" + (", ".join("%s=%d" % kv for kv in total.items()) or "无"))
-    if not a.dry_run:
+    if not a.dry_run and total:
         print("输出：%s" % out)
+    elif not a.dry_run:
+        print("无需核校：未发现多余空格／半角标点，未生成副本")
     if a.report:
         with open(a.report, "w", encoding="utf-8") as f:
             f.write("# 成稿空格核校\n\n")
