@@ -70,6 +70,10 @@ if ($RebuildTemplate -or -not (Test-Path $tpl)) {
     Write-Host "[模板] 重建三栏目模板（参考件：政策要情第一百期）"
     & $Python (Join-Path $LayoutDir "_build_monthly_template.py")
     if ($LASTEXITCODE -ne 0) { throw "模板重建失败" }
+    Write-Host "[模板] 修正页脚版式（页码居中＋各节页脚高度统一）"
+    & $Python (Join-Path $ToolRoot "99_脚本\40_fix_footer_layout.py") $tpl | Out-Null
+    & $Python (Join-Path $ToolRoot "99_脚本\40_fix_footer_layout.py") `
+        ([System.IO.Path]::ChangeExtension($tpl, ".dotx")) | Out-Null
 }
 
 # ---- 出刊 ----
@@ -108,6 +112,11 @@ Write-Host "[跳转] 目录书签与超链接 34"
 Write-Host "[页码] 刷新页脚域缓存 39"
 & $Python (Join-Path $ToolRoot "99_脚本\39_fix_footer_page_cache.py") $docx0 -o $docx0 `
     --report (Join-Path $PeriodDir "_备查\页脚页码缓存刷新.md") | Out-Null
+
+# ---- 页脚版式：页码居中 + 各节页脚高度统一 ----
+Write-Host "[页脚] 版式修正 40"
+& $Python (Join-Path $ToolRoot "99_脚本\40_fix_footer_layout.py") $docx0 `
+    --report (Join-Path $PeriodDir "_备查\页脚版式修正.md") | Out-Null
 
 # ---- 渲染与体检 ----
 $docx = $docx0
