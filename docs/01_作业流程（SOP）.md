@@ -257,6 +257,10 @@ python 99_脚本/34_add_toc_links.py "<成刊.docx>" -o "<成刊.docx>"    # 就
   - **页码口径**：`42_set_page_numbering.py --mode body`（阶段B 已内置，跑在 34 之前）——**封面与目录不计入页码**，
     正文从第 1 页起；目录页码＝页脚页码。PDF 由 `41` 自动打页码标签（封面/目录 i、ii，正文 1 起），
     使阅读器页码框与页脚、目录一致。
+  - **跨渲染器分页**：`43_normalize_layout.py`（阶段B 已内置，跑在 34 之前）——把 `characterSpacingControl` 设为
+    `doNotCompress`。中文标点压缩在 WPS 与 LibreOffice 里实现不同（51 页 vs 54 页），不统一就会"Word 一套页码、PDF 另一套"。
+  - **复核**：`powershell -NoProfile -File 99_脚本\44_check_wps_pagination.ps1 -Docx "<成刊.docx>"` 输出 WPS 的总页数与
+    每篇页码，与 PDF 逐篇比对（封面+目录 2 页不计入，故 WPS 物理页 = 正文页码 + 2）。
   - 验收：目录条目链接数＝条目数；抽 3 条比对“目录标注页码＝目标页页脚页码”；**在 WPS 里点 3 条**确认能跳。
 - **成刊两条固定规则（2026-09-17 定）**：
   1. **正文不排“原文链接”行**（链接只留在 `00_资讯目录` 与 `02_原文` 归档）；需要恢复排印时设 `CEHUI_SOURCE_LINK=1` 再重跑阶段B。
@@ -343,6 +347,7 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 | 导出的 PDF 字体不对（如二级标题变成微软雅黑） | 本机缺 `楷体_GB2312`（系统自带的是“楷体/KaiTi”，两者不是同一字体），导出时被顶替 | 把 `楷体_GB2312.ttf` 装进用户字体目录并刷新字体缓存，再用 `41_export_pdf.py` 重导；导出前它会报警 |
 | 目录页码与 PDF 阅读器页码对不上 | 封面与目录不计入页码，正文从 1 起，阅读器物理页 = 正文页码 + 2 | 正常现象；PDF 已打页码标签（封面 i、目录 ii），阅读器按标签显示即与页脚一致；要“阅读器页码＝正文页码”可改用 `42 --mode pdf` |
 | 页码在不同板块重置（每节都从 1 起） | `42` 误把每个分节都设成 `start=1` | 只有第一节正文设 start=1，其余分节连续编号（已修，`--mode body`） |
+| Word/WPS 打开是 51 页、PDF 是 54 页，页码对不上 | 文档带 `compressPunctuation`（标点压缩），两个引擎压缩力度不同 | 跑 `43_normalize_layout.py` 改成 `doNotCompress`，再用 `44` 复核 WPS 分页＝PDF |
 | 成刊正文出现“原文链接：…” / 文末出现“（刘某）” | 固定规则未生效（用了旧版脚本） | 确认 `_build_monthly_issue.py` 调用了 `WL.include_source_link()` 与 `WL.strip_sign_off()`；重跑阶段B |
 | 成刊出现空白页 | 标题前有空段落 + 标题设了“段前分页” | 跑 `38_page_break_per_article.py`（会删掉标题前紧邻空段）；体检项“无空白页”应为 0 |
 | 文章接排、没有一篇一页 | 未启用 R12 | 跑 `38_page_break_per_article.py`，或重跑阶段B（新刊默认一篇一页） |

@@ -130,6 +130,19 @@ python 99_脚本\42_set_page_numbering.py "<成刊.docx>" --mode body   # 阶段
    - PDF 侧由 `41_export_pdf.py` 自动打**页码标签**：封面/目录 i、ii，正文 1 起 → 阅读器页码框与页脚、目录一致。
    - 验收：逐条比对"目录页码 = 目标页页脚页码"（脚本 `_toc_audit` 式检查），不一致必须为 0。
 
+13. **跨渲染器分页一致（2026-09-17 用户反馈“Word 版与 PDF 版页码、排版不一致”）**：docx 原带
+    `<w:characterSpacingControl w:val="compressPunctuation"/>`（中文标点压缩）。**WPS 压缩激进（全刊 51 页），
+    LibreOffice 压缩很少（54 页）**，两边分页不同 → 目录/页脚页码在 Word 与 PDF 里对不上。
+
+```powershell
+python 99_脚本\43_normalize_layout.py "<成刊.docx>"                                  # 阶段B 已内置，跑在 34 之前
+powershell -NoProfile -File 99_脚本\44_check_wps_pagination.ps1 -Docx "<成刊.docx>"   # 用 WPS 复核分页
+```
+
+   - 处理：`characterSpacingControl` → `doNotCompress`。实测两边都变成 54 页，逐篇起始页完全一致。
+   - 复核口径：`44` 输出的 WPS 总页数＝PDF 页数；每篇在 WPS 的物理页 − 封面目录页数（2）＝ 目录标注页码。
+   - 好习惯：改正文、字体、页边距后都跑一次 `43` + `44`，别只看 PDF 或只看 Word。
+
 ## 常见问题
 
 - **页码不收敛**：`_make_issue.py` 最多迭代 5 轮；仍不收敛时多半是目录条目文字过长换了行，缩短标题或减少每栏目条数。

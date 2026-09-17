@@ -105,6 +105,9 @@ if ($out33 -match "命中：无") {
 
 # ---- 目录加内部跳转链接（Word 与 PDF 都能点击）----
 Write-Host "[跳转] 目录书签与超链接 34"
+& $Python (Join-Path $ToolRoot "99_脚本\43_normalize_layout.py") $docx0 `
+    --report (Join-Path $PeriodDir "_备查\排版参数统一.md") | Out-Null
+Write-Host "[排版] 统一标点压缩参数（WPS 与 LibreOffice 分页一致）"
 & $Python (Join-Path $ToolRoot "99_脚本\42_set_page_numbering.py") $docx0 --mode body `
     --report (Join-Path $PeriodDir "_备查\页码口径.md") | Out-Null
 Write-Host "[页码] 封面/目录不计入页码（正文从 1 起）"
