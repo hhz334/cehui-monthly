@@ -287,14 +287,20 @@ def main():
         cursor = end
         newelems = []
         first = True
-        for s in block:
+        for idx, s in enumerate(block):
             title = s["title"]
             prov = s.get("province") or s.get("level") or ""
             prefix = f"【{prov}】" if prov else ""
-            if not first:
-                newelems.append(clone(pat_body, ""))          # 条间空行
+            # 固定规则（2026-09-17）：每篇文章另起一页
+            # 本节第一条已由分节符另页，其余条目在标题段上设“段前分页”，
+            # 同时不再插条间空行，避免空段被顶到新页造成空白页。
+            if not first and idx == 0:
+                newelems.append(clone(pat_body, ""))          # 板块内首条前的呼吸位
             first = False
-            newelems.append(clone_keep(pat_title, f"{prefix}{title}"))
+            title_el = clone_keep(pat_title, f"{prefix}{title}")
+            if idx > 0:
+                docx.text.paragraph.Paragraph(title_el, d).paragraph_format.page_break_before = True
+            newelems.append(title_el)
             src = (f"来源：{s.get('unit','')}｜{s.get('source_type','')}｜{s.get('date_override','')}"
                    f"｜业务条线：{s.get('business','')}｜优先级 {s.get('priority','')}")
             src = f"来源：{s.get('unit','')}"      # 只写来源单位，其余信息不入正文

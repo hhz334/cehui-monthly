@@ -61,6 +61,16 @@ python 99_脚本\33_fix_docx_text.py "<成稿.docx>" -o "<成稿>_核校版.docx
 7. **目录跳转与页码（2026-09-17 增补）**：成刊定稿后跑 `34_add_toc_links.py`（`run_monthly_issue.ps1` 已内置，
    就地执行）。
 
+8. **每篇文章另起一页（R12，2026-09-17 定）**：
+
+```powershell
+python 99_脚本\38_page_break_per_article.py "<成刊.docx>"      # 就地补“段前分页”，已生成的成刊用这个
+```
+
+   - 新刊由 `_build_monthly_issue.py` 直接给标题段设 `pageBreakBefore`；**板块首条不设**（分节符已另页），否则多出空白页。
+   - `38` 在设分页的同时删除标题前紧邻的空段落（最多 10 个）——空段被顶到新页会变成只有页眉页脚的空白页。
+   - 验收：每个 `【省份】标题` 都出现在某页的第一行；`render_and_check.py` 的“无空白页”为 0 个。
+
 ```powershell
 python 99_脚本\34_add_toc_links.py "<成刊.docx>" -o "<成刊.docx>"
 ```

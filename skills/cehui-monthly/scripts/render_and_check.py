@@ -98,6 +98,17 @@ def main():
         header = [(round(c["top"]), c["text"]) for c in body_page.chars if c["top"] < 80]
         header_line = [round(l["top"], 1) for l in body_page.lines if l["top"] < 95]
         page_count = len(doc.pages)
+        # 空白页：去掉页眉（栏目名）与页脚（— N —）后页面没有内容
+        blank_pages = []
+        for i, pg in enumerate(doc.pages, 1):
+            t = re.sub(r"\s+", "", pg.extract_text() or "")
+            t = re.sub(r"—\d+—", "", t)
+            for b in BOARDS:
+                if t.startswith(b):
+                    t = t[len(b):]
+                    break
+            if not t:
+                blank_pages.append(i)
 
     text = re.sub(r"\s+", "", "".join(pages))
     n_src = text.count("来源：")
@@ -118,6 +129,8 @@ def main():
     checks.append(("封面红字刊名", "测绘地理信息月刊" in red_title, red_title or "未见大字号刊名"))
     checks.append(("正文页眉就位", bool(header) and bool(header_line),
                    "栏名 top=%s｜线 %s" % (header[0][0] if header else "-", header_line[:2])))
+    checks.append(("无空白页", not blank_pages,
+                   "空白页 %s" % (blank_pages if blank_pages else "0 个")))
 
     ok = True
     for name, passed, detail in checks:
