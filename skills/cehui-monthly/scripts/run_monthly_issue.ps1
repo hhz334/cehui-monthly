@@ -1,4 +1,4 @@
-<#
+﻿<#
 阶段B：月刊排版（校验定稿选目 → 出刊 → 渲染 PDF/预览 → 版式体检）
 
 用法：
@@ -83,8 +83,19 @@ Write-Host "[出刊] $stem"
 & $Python (Join-Path $LayoutDir "_make_issue.py")
 if ($LASTEXITCODE -ne 0) { throw "出刊失败（检查页码是否收敛）" }
 
+# ---- 文本核校（空格／标点／漏字，2026-09-17 增补）----
+$docx0 = if ($env:ISSUE_FINAL) { $env:ISSUE_FINAL } else { Join-Path $LayoutDir ($stem + ".docx") }
+$clean = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($docx0),
+                                   [System.IO.Path]::GetFileNameWithoutExtension($docx0) + "_核校版.docx")
+Write-Host "[核校] 体例体检 27 + 空格标点核校 33"
+& $Python (Join-Path $ToolRoot "99_脚本\27_text_qa.py") --doc $docx0 `
+    --out (Join-Path $PeriodDir "_备查\文本体例检查.md")
+& $Python (Join-Path $ToolRoot "99_脚本\33_fix_docx_text.py") $docx0 -o $clean `
+    --report (Join-Path $PeriodDir "_备查\成稿空格核校.md")
+if (Test-Path $clean) { $docx0 = $clean }
+
 # ---- 渲染与体检 ----
-$docx = if ($env:ISSUE_FINAL) { $env:ISSUE_FINAL } else { Join-Path $LayoutDir ($stem + ".docx") }
+$docx = $docx0
 $outdir = if ($Forward) { Join-Path $PeriodDir "_raw\_forward\预览" } else { Join-Path $LayoutDir "月刊预览" }
 $checkArgs = @((Join-Path $PSScriptRoot "render_and_check.py"), $PeriodDir, "--docx", $docx, "--outdir", $outdir,
                "--expect-items", "$($selItems.Count)")

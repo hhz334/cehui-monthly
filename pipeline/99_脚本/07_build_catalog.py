@@ -9,6 +9,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fetch_utils import RAW, ROOT, ensure_dir, load_json  # noqa: E402
 from period_config import P  # noqa: E402
+import sources_whitelist as WL  # noqa: E402
 
 CATALOG_DIR = os.path.join(ROOT, "02_原文")
 MODULES = ["政策法规", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”
@@ -125,7 +126,9 @@ def main():
             "标题": title, "发布单位": src_name,
             "来源载体": carrier, "来源链接": url, "发布日期": date, "采集日期": COLLECT_DATE,
             "关键词": sel.get("keywords", ""),
-            "摘要": sel.get("summary") or re.sub(r"\s+", " ", text)[:180] or "（原文附后）",
+            "摘要": WL.normalize_text(sel.get("summary")
+                                    or re.sub(r"\s+", " ", text)[:180]
+                                    or "（原文附后）"),
             "建议优先级": sel.get("priority", "B"),
             "是否已被山东周讯收录": weekly_flag, "备注": sel.get("note", ""),
             "核实状态": verify.get(verify_key, {}).get("核实状态", "未核实"),

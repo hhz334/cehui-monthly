@@ -416,9 +416,11 @@ BODY_FURNITURE = [
     r"【\s*(?:字号|字体|大\s*中\s*小)[^】]*】",
     r"【\s*(?:打印|关闭|返回|顶部|收藏|分享|纠错|下载)[^】]*】",
     r"(?:打印本页|关闭窗口|返回顶部|打印文章)",
-    r"微信扫一扫[^\n。]{0,20}",
-    r"扫一扫[^\n。]{0,16}",
-    r"分享到\s*[:：]?",
+    # 注意：不能贪吃正文。曾用 `扫一扫[^\n。]{0,16}` 把正文
+    # “用手机扫一扫随机获取的地图，系统即可自动识别…”整段误删（2026-09-17 修正）。
+    r"微信扫一扫\s*(?:关注|二维码|查看|浏览|了解|详情|我们)?\s*[:：]?",
+    r"(?:长按|扫描|识别)\s*二维码[^\n。]{0,12}",
+    r"分享到\s*[:：]",
     r"新媒体编辑\s*[:：]\s*\S{1,12}",
     r"责任编辑\s*[:：]\s*\S{1,12}",
     r"审核人\s*[:：]\s*\S{1,12}",
@@ -426,6 +428,10 @@ BODY_FURNITURE = [
     r"时间\s*[:：]\s*\d{4}\s*[-/年.]\s*\d{1,2}\s*[-/月.]\s*\d{1,2}\s*日?",
 ]
 BODY_FURNITURE_RE = re.compile("|".join(BODY_FURNITURE))
+# 独立成行的“页面提示”才整行删除（正文里出现的同名字词保留）
+FURNITURE_LINE_RE = re.compile(
+    r"^(?:扫一扫[^\n]{0,24}|长按[^\n]{0,20}|识别二维码[^\n]{0,24}|点击[^\n]{0,16}(?:查看|阅读|了解)|"
+    r"阅读原文|关注(?:我们|公众号)[^\n]{0,12}|转载请注明来源[^\n]{0,12}|稿件来源[:：][^\n]{0,20})$")
 # 头部区域内的"来源：单位"属于页面元信息（正文里的"数据来源""资料来源"不受影响）
 HEAD_SOURCE_RE = re.compile(r"(?<![数据资料])来源\s*[:：]\s*[^\s，。；【】]{2,24}")
 
@@ -445,12 +451,91 @@ def clean_body(text, title=""):
             if m:
                 t = t[m.end():]
     t = BODY_FURNITURE_RE.sub(" ", t)
+    # 独立成行的页面提示整行删除（正文中的同名字词不受影响）
+    t = "\n".join("" if FURNITURE_LINE_RE.match(line.strip()) else line
+                  for line in t.split("\n"))
     head, tail = t[:200], t[200:]
     head = HEAD_SOURCE_RE.sub(" ", head)
     t = head + tail
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
-    return t.strip()
+    return normalize_text(t).strip()
+
+
+# ---------------------------------------------------------------- 空格与标点规范化
+CJK = "\u3400-\u4dbf\u4e00-\u9fff"
+CN_PUNCT_OPEN = "，。、；：！？）》”’】"
+CN_PUNCT_CLOSE = "，。、；：！？《（“‘【"
+HEADING_LINE = re.compile(r"^第\s*[一二三四五六七八九十百零〇\d]+\s*[章条节款项]|^[一二三四五六七八九十]+、\S{0,20}$")
+
+
+def _fix_line_spaces(line):
+    """单行空格规范化：去掉汉字与字母/数字之间、中文标点前后的多余空格。
+
+    保留：章条标题行、“引号内标语”这类汉字之间的空格（如“维护地理信息安全 激发时空数据潜能”）。
+    """
+    if HEADING_LINE.match(line.strip()):          # 法条/章标题：整体保留空格
+        return re.sub(r"[ \t]{2,}", " ", line)
+    out = []
+    # 引号内的片段先保护起来（标语常以空格分隔）
+    protected = []
+
+    def _keep(m):
+        protected.append(m.group(0))
+        return "\x00%d\x00" % (len(protected) - 1)
+
+    line = re.sub(r"[“\"'][^”\"']{1,40}[”\"']", _keep, line)
+    # 汉字 ↔ 字母/数字
+    line = re.sub(r"(?<=[%s])[ \t]+(?=[A-Za-z0-9])" % CJK, "", line)
+    line = re.sub(r"(?<=[A-Za-z0-9])[ \t]+(?=[%s])" % CJK, "", line)
+    # 中文标点前后
+    line = re.sub(r"[ \t]+(?=[%s])" % CN_PUNCT_OPEN, "", line)
+    line = re.sub(r"(?<=[%s])[ \t]+" % CN_PUNCT_CLOSE, "", line)
+    # 行首行尾
+    line = re.sub(r"^[ \t]+|[ \t]+$", "", line)
+    for i, seg in enumerate(protected):
+        line = line.replace("\x00%d\x00" % i, seg)
+    return line
+
+
+def normalize_text(text):
+    """统一特殊空白、去掉汉字与字母数字/中文标点之间的多余空格，规范中文里的半角标点。"""
+    if not text:
+        return ""
+    t = (text.replace("\u200a", "").replace("\u200b", "").replace("\u2004", " ")
+              .replace("\xa0", " ").replace("\u3000", " "))
+    t = "\n".join(_fix_line_spaces(line) for line in t.split("\n"))
+    # 中文语境里的半角标点 → 全角（两侧都是汉字时才转，避免影响数字/英文）
+    for half, full in ((",", "，"), (";", "；"), ("!", "！"), ("?", "？")):
+        t = re.sub(r"(?<=[%s])%s(?=[%s])" % (CJK, re.escape(half), CJK), full, t)
+    t = re.sub(r"[ \t]{2,}", " ", t)
+    return t
+
+
+def check_text_quality(text, title=""):
+    """正文体例检查：返回问题列表 [(类型, 上下文)]，供人工复核（不自动改写）。"""
+    issues = []
+    t = text or ""
+    for m in re.finditer(r"[%s][ \t]+[%s]" % (CJK, CJK), t):
+        seg = t[max(0, m.start() - 12):m.end() + 12].replace("\n", " ")
+        line = t[:m.start()].split("\n")[-1]
+        if HEADING_LINE.match(line.strip()) or re.search(r"[“\"'][^”\"']*[ \t][^”\"']*[”\"']", seg):
+            continue                              # 法条标题、引号内标语属正常
+        issues.append(("汉字间空格（疑漏字）", seg))
+    for m in re.finditer(r"[%s][,;:?!][%s]" % (CJK, CJK), t):
+        issues.append(("中文里出现半角标点", t[max(0, m.start() - 12):m.end() + 12].replace("\n", " ")))
+    for m in re.finditer(r"[，。、；：！？]{2,}", t):
+        issues.append(("连续标点", t[max(0, m.start() - 10):m.end() + 10].replace("\n", " ")))
+    for m in re.finditer(r"[\xa0\u200a\u2004\u200b]", t):
+        issues.append(("特殊空白字符", repr(t[max(0, m.start() - 10):m.end() + 10])))
+    for m in re.finditer(r"^(?:扫一扫|长按|识别二维码|点击(?:查看|阅读)|关注我们|阅读原文)[^\n]{0,20}$", t, re.M):
+        issues.append(("页面提示残留", m.group(0)[:30]))
+    for a, b in (("“", "”"), ("《", "》"), ("（", "）"), ("‘", "’")):
+        if t.count(a) != t.count(b):
+            issues.append(("引号/括号不成对", "%s=%d %s=%d" % (a, t.count(a), b, t.count(b))))
+    for m in re.finditer(r"[\u4e00-\u9fa5]{2,}(?:/摄|供图)", t):
+        issues.append(("疑似署名/供图", m.group(0)))
+    return issues
 
 
 def entity_match(url, publisher):

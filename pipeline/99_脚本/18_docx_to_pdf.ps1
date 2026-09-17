@@ -1,6 +1,6 @@
-# 用本机 WPS（KWPS.Application）把 Word 版交付件导出为 PDF，供版式体检使用。
+﻿# 用本机 WPS（KWPS.Application）把 Word 版交付件导出为 PDF，供版式体检使用。
 param(
-    [string]$Dir = "D:\工作文件\团委\测绘动态\2026年8-9月测绘动态资讯\Word版",
+    [string]$Dir = "<工作根 ToolRoot>\2026年8-9月测绘动态资讯\Word版",
     [string]$OutDir = ""
 )
 $ErrorActionPreference = "Stop"

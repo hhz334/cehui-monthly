@@ -8,10 +8,10 @@ import sys
 
 import pdfplumber
 
-BASE = r"D:\工作文件\团委\测绘动态\编制排版"
+BASE = r"<工作根 ToolRoot>\编制排版"
 PY = r"C:\Users\admin\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 SKILL = r"C:\Users\admin\.codex\plugins\cache\openai-primary-runtime\documents\26.909.12148\skills\documents"
-TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or r"D:\工作文件\团委\测绘动态"
+TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or r"<工作根 ToolRoot>"
 sys.path.insert(0, os.path.join(TOOL_ROOT, "99_脚本"))
 from period_config import P  # noqa: E402
 

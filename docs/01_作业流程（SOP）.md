@@ -10,7 +10,7 @@
 
 **一句话链路**：设置期次与窗口 → 官网采集 → 专用通道采集 → 周讯对标（只作线索）→ 自动初筛 → 三板块重建与业务条线打标 → 来源实体校验与原文复检 → 成稿 → 多方式核实 → 交付。
 
-**技能化入口（2026-09-17 起）**：本流程已封装为技能 `cehui-monthly`（`C:\Users\admin\.codex\skills\cehui-monthly\`），
+**技能化入口（2026-09-17 起）**：本流程已封装为技能 `cehui-monthly`（`~/.codex/skills/cehui-monthly\`），
 分两块执行，日常不必手敲脚本：
 
 > 对外公开仓库：<https://github.com/hhz334/cehui-monthly>（含技能、工具链与口径文档，可整包下载或 `git clone`；
@@ -18,10 +18,10 @@
 
 ```powershell
 # 阶段A 初稿目录生成（采集→初筛→批注回灌→核验→目录与原文归档→Word 交付件→自检）
-powershell -File "C:\Users\admin\.codex\skills\cehui-monthly\scripts\run_draft_catalog.ps1" -PeriodDir "<期次目录>"
+powershell -File "~/.codex/skills/cehui-monthly\scripts\run_draft_catalog.ps1" -PeriodDir "<期次目录>"
 
 # 阶段B 月刊排版（校验定稿选目→出刊→渲染 PDF/预览→版式体检）
-powershell -File "C:\Users\admin\.codex\skills\cehui-monthly\scripts\run_monthly_issue.ps1" -PeriodDir "<期次目录>"
+powershell -File "~/.codex/skills/cehui-monthly\scripts\run_monthly_issue.ps1" -PeriodDir "<期次目录>"
 ```
 
 常用参数：阶段A `-Only 07,14,32,17`／`-From 25`／`-SkipWeekly`／`-LeaderDoc <批注版.doc> -LeaderLabel 0917`；
@@ -224,6 +224,18 @@ python 99_脚本/17_make_docx.py
   `一、`／`（一）`／`1.` 自动分级。改版后务必重跑 `_build_monthly_template.py` 并抽检三级的字体字号。
 - **标题与正文同段**：如“（一）加快构建国家数字空间基准。一是……”，只有到第一个句号为止的标题部分用标题格式，
   其后内容按正文（仿宋_GB2312 小四不加粗）排版；`一、` 与 `（一）` 两级同样处理。
+- **成稿文本核校（2026-09-17 增补，人工审核反馈）**：成刊（或领导审核版）出稿后必须过两道：
+
+```powershell
+python 99_脚本/27_text_qa.py --doc "<成稿.docx>"            # 体例体检：空格/标点/漏字 + 与原文逐段比对
+python 99_脚本/33_fix_docx_text.py "<成稿.docx>" -o "<成稿>_核校版.docx"   # 清多余空格与半角标点（不动版式）
+```
+
+  - `27` 输出《_备查/文本体例检查.md》：逐条列出“空格问题／体例问题／原文有而审核版缺／审核版有而原文无”；后两类用于
+    判断是**人工有意删除**（署名、图片说明、页面提示）还是**抽取漏字**。
+  - `33` 只改 `w:t` 文本节点：清除 `U+00A0／U+200A／U+2004` 等特殊空白、汉字与字母数字之间的空格、中文标点前后的空格，
+    汉字间半角标点转全角；**保留**页脚“— 1 —”、目录制表位、法条标题与引号内标语。
+  - 复核口径：核校版应满足“汉字与字母/数字之间空格 0、特殊空白仅剩页眉的 `\u3000`、引号书名号括号全部配对”。
 
 ### S11 收尾自检（0.2 天）
 
@@ -271,6 +283,7 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 
 **辅助**：`02_ocr_weekly.js`（周讯长图 OCR，PDF 文本层优先）、`18_docx_to_pdf.ps1`、`19_check_pdf.py`、
 `28_check_standard_consistency.py`（标准一致性自检）、`30_regression_leader.py`（领导版回归）、
+`27_text_qa.py`（成稿体例体检：空格/标点/漏字 + 与原文逐段比对）、`33_fix_docx_text.py`（成稿空格与标点核校）、
 `fetch_utils.py`（公共库）、`sources_whitelist.py`（白名单与口径配置）
 
 > 顺序三条硬约束：`25` 早于 `08`／`07`；`08` 早于 `07`（否则 xlsx 的"核实状态"列取的是上一次的结果）；`14` 晚于 `07`（要向 xlsx 追加工作表）。
@@ -288,6 +301,9 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 | 发布单位与链接不符 | 部网站转载地方稿、他单位转载 | S7 按链接域名自动纠正发布单位 |
 | 日期越界 | 转载滞后、周讯口径不同 | 以原文日期为准；越界条目移入备查 |
 | Word 表格报错 | Markdown 单元格含 `|` | 生成脚本已做转义与列数保护 |
+| 正文里出现莫名空格（数字/字母/标点旁） | 源页 `&nbsp;`／细空格 `U+200A`／`U+2004`，或复制粘贴带入 | 跑 `33_fix_docx_text.py` 核校成稿；源头由 `normalize_text()` 兜底 |
+| 正文整段少了几个字 | 页面家具正则吞掉正文（如旧 `扫一扫[^\n。]{0,16}`） | 改 `BODY_FURNITURE` 为整行匹配；跑 `27_text_qa.py` + 重抓原页按句比对复核 |
+| 成稿里出现署名“（刘某）”“××/摄” | 原文末尾的供稿署名 | 由人工审核版决定去留；如需统一删除，在 `33` 中加“文末署名”规则（尚未启用） |
 
 ## 八、下期开工模板
 
