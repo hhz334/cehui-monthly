@@ -104,6 +104,11 @@ Write-Host "[跳转] 目录书签与超链接 34"
 & $Python (Join-Path $ToolRoot "99_脚本\34_add_toc_links.py") $docx0 -o $docx0 `
     --report (Join-Path $PeriodDir "_备查\目录跳转链接.md") | Out-Null
 
+# ---- 刷新页脚 PAGE 域缓存（WPS 默认按缓存显示页码，缓存过期就会和目录对不上）----
+Write-Host "[页码] 刷新页脚域缓存 39"
+& $Python (Join-Path $ToolRoot "99_脚本\39_fix_footer_page_cache.py") $docx0 -o $docx0 `
+    --report (Join-Path $PeriodDir "_备查\页脚页码缓存刷新.md") | Out-Null
+
 # ---- 渲染与体检 ----
 $docx = $docx0
 $outdir = if ($Forward) { Join-Path $PeriodDir "_raw\_forward\预览" } else { Join-Path $LayoutDir "月刊预览" }

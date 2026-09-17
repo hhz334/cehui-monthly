@@ -246,6 +246,8 @@ python 99_脚本/34_add_toc_links.py "<成刊.docx>" -o "<成刊.docx>"    # 就
     **必须用域写法**：Word 原生的 `w:hyperlink w:anchor` 在 WPS 里会被当成外部文件，点击报“无法打开指定文件”。
   - 导出 PDF 时（LibreOffice / WPS）内部链接会保留为可点击链接；`render_and_check.py` 渲染后把 PDF 复制到成刊同目录。
   - 页码按**文档页脚**“— N —”回填，不按 PDF 物理页序；重排/换模板后务必重跑本步。
+  - **页脚域缓存**：页脚是 `PAGE` 域，域里带着上次排版的缓存值，WPS 默认按缓存显示 → 页码会和目录对不上。
+    跑 `39_fix_footer_page_cache.py`（阶段B 已内置）刷新缓存并打开“打开时更新域”。
   - 验收：目录条目链接数＝条目数；抽 3 条比对“目录标注页码＝目标页页脚页码”；**在 WPS 里点 3 条**确认能跳。
 - **成刊两条固定规则（2026-09-17 定）**：
   1. **正文不排“原文链接”行**（链接只留在 `00_资讯目录` 与 `02_原文` 归档）；需要恢复排印时设 `CEHUI_SOURCE_LINK=1` 再重跑阶段B。
@@ -327,6 +329,7 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 | 目录页码与实际不符 | 人工增删页后未重排 | 跑 `34_add_toc_links.py`：按页脚“— N —”回填页码（本期修正 45→46、48→49） |
 | PDF 里目录点不动 | 目录未加内部超链接，或转换工具未保留 | 跑 `34` 后再导出（LibreOffice/WPS 都会保留内部链接） |
 | WPS 里点目录提示“无法打开指定文件” | 用了 Word 原生 `w:hyperlink w:anchor` 写法，WPS 不认 | 用 `34_add_toc_links.py`（默认 `--style field`）重新生成；域写法 WPS/Word 通用 |
+| WPS 里页脚页码和目录对不上 | 页脚 `PAGE` 域里的**缓存值过期**（模板自带 1/42/60），WPS 默认不重算 | 跑 `39_fix_footer_page_cache.py`（阶段B 已内置）：刷新缓存＋`updateFields` |
 | 成刊正文出现“原文链接：…” / 文末出现“（刘某）” | 固定规则未生效（用了旧版脚本） | 确认 `_build_monthly_issue.py` 调用了 `WL.include_source_link()` 与 `WL.strip_sign_off()`；重跑阶段B |
 | 成刊出现空白页 | 标题前有空段落 + 标题设了“段前分页” | 跑 `38_page_break_per_article.py`（会删掉标题前紧邻空段）；体检项“无空白页”应为 0 |
 | 文章接排、没有一篇一页 | 未启用 R12 | 跑 `38_page_break_per_article.py`，或重跑阶段B（新刊默认一篇一页） |
