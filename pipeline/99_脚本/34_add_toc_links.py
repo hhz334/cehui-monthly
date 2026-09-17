@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""给成刊目录加内部书签与超链接，让 Word 与导出的 PDF 都能点击跳转。
+"""给成刊目录加内部书签与超链接，让 Word、WPS 与导出的 PDF 都能点击跳转。
 
 做三件事：
 1. 在每条正文标题段（`【省份】标题》）上插入 `w:bookmarkStart/End`；
-2. 把目录页对应条目的标题文字包进 `w:hyperlink w:anchor="..."`（字体字号不动，制表位与页码留在超链接之外）；
+2. 把目录页对应条目的标题文字做成 `HYPERLINK \\l "书签名" \\h` 域（WPS 与 Word 都认；WPS 不认 Word 原生的
+   `w:hyperlink w:anchor`，会提示“无法打开指定文件”）。字体字号不动，制表位与页码留在域之外；
 3. 可选：按渲染出来的 PDF 回读页码（`--pdf`），把目录上的页码改成文档自身页脚的真实页码。
 
 LibreOffice / Word 导出 PDF 时会保留内部超链接，点击目录即可跳到对应文章。
@@ -12,6 +13,7 @@ LibreOffice / Word 导出 PDF 时会保留内部超链接，点击目录即可�
     python 34_add_toc_links.py <成稿.docx> [-o <输出.docx>] [--pdf <成稿.pdf>] [--report <报告.md>]
 """
 import argparse
+import copy
 import glob
 import os
 import re
@@ -110,8 +112,43 @@ def wrap_hyperlink(par, run_elements, anchor):
         hl.append(el)          # append 即“移动”，run 属性保持不变
 
 
+def _field_run(kind, rPr=None):
+    r = OxmlElement("w:r")
+    if rPr is not None:
+        r.append(copy.deepcopy(rPr))
+    if kind:
+        f = OxmlElement("w:fldChar")
+        f.set(qn("w:fldCharType"), kind)
+        r.append(f)
+    return r
+
+
+def wrap_hyperlink_field(par, run_elements, anchor):
+    """用 HYPERLINK 域做内部跳转——WPS 与 Word 都认（WPS 自身就是这么写的）。
+
+    此前用 Word 原生的 `w:hyperlink w:anchor`，WPS 会把它当外部文件，点击提示“无法打开指定文件”。
+    域形式：`{ HYPERLINK \\l "书签名" \\h }`，域结果为标题文字（保留原字体格式）。
+    """
+    p = par._p
+    first = run_elements[0]
+    rPr = first.find(qn("w:rPr"))
+    idx = list(p).index(first)
+    begin = _field_run("begin", rPr)
+    instr = _field_run(None, rPr)
+    it = OxmlElement("w:instrText")
+    it.set(qn("xml:space"), "preserve")
+    it.text = ' HYPERLINK \\l "%s" \\h ' % anchor
+    instr.append(it)
+    sep = _field_run("separate", rPr)
+    for el in (begin, instr, sep):
+        p.insert(idx, el)
+        idx += 1
+    end = _field_run("end", rPr)
+    run_elements[-1].addnext(end)
+
+
 def unwrap_hyperlinks(par):
-    """把已有的 `w:hyperlink` 拆开（保证脚本可重复运行，不会嵌套）。"""
+    """拆掉已有的 `w:hyperlink`／HYPERLINK 域与书签（保证脚本可重复运行）。"""
     p = par._p
     for hl in list(p.findall(qn("w:hyperlink"))):
         idx = list(p).index(hl)
@@ -119,6 +156,25 @@ def unwrap_hyperlinks(par):
             p.insert(idx, el)
             idx += 1
         p.remove(hl)
+    # 删掉之前生成的 HYPERLINK 域：只去掉 fldChar／instrText 这些“域标记”run，保留标题文字 run
+    in_field, drop = False, []
+    for el in list(p):
+        if el.tag != qn("w:r"):
+            continue
+        fc = el.find(qn("w:fldChar"))
+        kind = fc.get(qn("w:fldCharType")) if fc is not None else None
+        if kind == "begin":
+            in_field = True
+            drop.append(el)
+            continue
+        if kind == "end":
+            in_field = False
+            drop.append(el)
+            continue
+        if kind == "separate" or (in_field and el.find(qn("w:instrText")) is not None):
+            drop.append(el)
+    for el in drop:
+        el.getparent().remove(el)
     ids = set()
     for start in list(p.findall(qn("w:bookmarkStart"))):
         if (start.get(qn("w:name")) or "").startswith("toc_"):
@@ -166,8 +222,11 @@ def main():
     ap.add_argument("src")
     ap.add_argument("-o", "--out", default="")
     ap.add_argument("--pdf", default="", help="成稿 PDF；给了就回读页码修正目录数字")
+    ap.add_argument("--style", choices=["field", "anchor"], default="field",
+                    help="field=HYPERLINK 域（WPS/Word 通用，默认）；anchor=Word 原生 w:hyperlink w:anchor")
     ap.add_argument("--report", default="")
     a = ap.parse_args()
+    fields = (a.style == "field")
     out = a.out or os.path.splitext(a.src)[0] + "_可跳转.docx"
 
     d = docx.Document(a.src)
@@ -202,9 +261,15 @@ def main():
         used.add(id(bp))
         anchor = "toc_%02d" % n
         add_bookmark(bp, anchor, 1000 + n)
-        runs, page_els = split_runs(par)
+        if fields:
+            runs, page_els = split_runs(par)
+        else:
+            runs, page_els = split_runs(par)
         if runs:
-            wrap_hyperlink(par, runs, anchor)
+            if fields:
+                wrap_hyperlink_field(par, runs, anchor)
+            else:
+                wrap_hyperlink(par, runs, anchor)
         note = ""
         if texts and page_els:
             key = norm(btitle)[:16]
