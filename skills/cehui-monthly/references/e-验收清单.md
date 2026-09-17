@@ -29,8 +29,9 @@
 - [ ] 目录标注页码＝目标页**页脚**“— N —”的页码（不是 PDF 物理页序）；重排或加页后必须重跑 34。
 - [ ] **页码口径**：封面与目录**不计入**页码，正文从第 1 页起（`42 --mode body` 已跑）；PDF 有页码标签
       （封面/目录 i、ii，正文 1 起），阅读器页码框与页脚一致。
-- [ ] **跨渲染器分页一致**：`43_normalize_layout.py` 已跑（`characterSpacingControl=doNotCompress`）；
-      用 `44_check_wps_pagination.ps1` 复核：WPS 总页数＝PDF 页数，且每篇"WPS 物理页 − 2 ＝ 目录页码"。
+- [ ] **跨渲染器分页一致（100 期口径）**：`43_normalize_layout.py --mode compress` 已跑（保留标点压缩）；
+      PDF 由 `render_compressed` 链路导出（docx→ODT 压缩=1→PDF），不是直接把 docx 丢给 LibreOffice；
+      用 `44_check_wps_pagination.ps1` 复核：WPS 总页数＝PDF 页数，且每篇"WPS 物理页 − 2 ＝ 目录页码 ＝ PDF 页脚"。
 - [ ] **页脚域缓存已刷新**（`39_fix_footer_page_cache.py` 已跑）：各分节页脚部件的 `PAGE` 缓存值＝该节首页页码
       （政策法规＝1、技术应用类＝第一节页数+1、科技前沿类依次递增），`settings.xml` 里有 `updateFields`；
       否则 WPS 会按旧缓存显示页码、与目录对不上。

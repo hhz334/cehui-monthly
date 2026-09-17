@@ -24,6 +24,8 @@ import zipfile
 from lxml import etree
 
 sys.stdout.reconfigure(encoding="utf-8")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_compressed import compressed_pdf   # noqa: E402
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 SOFFICE = [r"C:\Program Files\LibreOffice\program\soffice.exe",
@@ -132,7 +134,8 @@ def main():
     a = ap.parse_args()
     out = a.out or a.src
     tmp = os.path.join(os.path.dirname(os.path.abspath(out)), "_pagecache_tmp")
-    pdf = render_pdf(a.src, tmp)
+    # 必须按标点压缩口径渲染，否则分节首页页码会算成未压缩的布局
+    pdf = compressed_pdf(a.src, tmp) or render_pdf(a.src, tmp)
     if not pdf:
         print("渲染失败，无法确定实际页码")
         return 1

@@ -26,6 +26,8 @@ import zipfile
 from lxml import etree
 
 sys.stdout.reconfigure(encoding="utf-8")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_compressed import compressed_pdf   # noqa: E402
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 SOFFICE = [r"C:\Program Files\LibreOffice\program\soffice.exe",
            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe", "soffice"]
@@ -194,7 +196,10 @@ def main():
     os.makedirs(tmpdir, exist_ok=True)
     tmp_docx = os.path.join(tmpdir, "export_source.docx")
     hits = remap_fonts(a.src, tmp_docx, mapping)
-    pdf = to_pdf(tmp_docx, tmpdir)
+    # 按 100 期口径（保留标点压缩）渲染，保证 PDF 与 Word/WPS 的分页一致
+    pdf = compressed_pdf(tmp_docx, tmpdir)
+    if not pdf:
+        pdf = to_pdf(tmp_docx, tmpdir)
     if not pdf:
         print("导出失败：找不到可用的 LibreOffice")
         return 1

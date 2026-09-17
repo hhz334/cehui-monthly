@@ -130,18 +130,22 @@ python 99_脚本\42_set_page_numbering.py "<成刊.docx>" --mode body   # 阶段
    - PDF 侧由 `41_export_pdf.py` 自动打**页码标签**：封面/目录 i、ii，正文 1 起 → 阅读器页码框与页脚、目录一致。
    - 验收：逐条比对"目录页码 = 目标页页脚页码"（脚本 `_toc_audit` 式检查），不一致必须为 0。
 
-13. **跨渲染器分页一致（2026-09-17 用户反馈“Word 版与 PDF 版页码、排版不一致”）**：docx 原带
-    `<w:characterSpacingControl w:val="compressPunctuation"/>`（中文标点压缩）。**WPS 压缩激进（全刊 51 页），
-    LibreOffice 压缩很少（54 页）**，两边分页不同 → 目录/页脚页码在 Word 与 PDF 里对不上。
+13. **标点压缩与跨渲染器分页（2026-09-17 按《政策要情》100 期定稿）**：《政策要情》第 100 期用的是
+    `<w:characterSpacingControl w:val="compressPunctuation"/>`（中文标点压缩）——WPS 下 61 页、LibreOffice 直接打开 67 页。
+    本刊同样口径：**保留压缩**，WPS/PDF 都是 51 页。
+
+    关键坑：**LibreOffice 直接打开 docx 会把压缩读成 0**（ODT 里 `CharacterCompressionType=0`），分页变松（54 页），
+    于是 Word 与 PDF 页码对不上。必须走以下渲染链：
 
 ```powershell
-python 99_脚本\43_normalize_layout.py "<成刊.docx>"                                  # 阶段B 已内置，跑在 34 之前
-powershell -NoProfile -File 99_脚本\44_check_wps_pagination.ps1 -Docx "<成刊.docx>"   # 用 WPS 复核分页
+python 99_脚本\43_normalize_layout.py "<成刊.docx>" --mode compress                    # 阶段B 已内置，跑在 34 之前
+python 99_脚本\render_compressed.py "<成刊.docx>" "<输出目录>"                          # docx→ODT(设压缩=1)→PDF
+powershell -NoProfile -File 99_脚本\44_check_wps_pagination.ps1 -Docx "<成刊.docx>"     # 用 WPS 复核分页
 ```
 
-   - 处理：`characterSpacingControl` → `doNotCompress`。实测两边都变成 54 页，逐篇起始页完全一致。
-   - 复核口径：`44` 输出的 WPS 总页数＝PDF 页数；每篇在 WPS 的物理页 − 封面目录页数（2）＝ 目录标注页码。
-   - 好习惯：改正文、字体、页边距后都跑一次 `43` + `44`，别只看 PDF 或只看 Word。
+   - `render_compressed.compressed_pdf()` 由 34（回填页码）、39（页脚域缓存）、41（导出 PDF）共用，保证三处口径一致。
+   - 复核口径：`44` 输出的 WPS 总页数＝PDF 页数；每篇在 WPS 的物理页 − 封面目录页数（2）＝ 目录标注页码 ＝ PDF 页脚。
+   - 备选：`43 --mode nocompress` 关掉压缩，两个引擎都 54 页（若哪天不想跟 100 期口径）。
 
 ## 常见问题
 

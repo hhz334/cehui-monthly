@@ -25,6 +25,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_compressed import compressed_pdf   # noqa: E402
 
 TOC_RE = re.compile(r"^(?P<num>\d+)[.．]\s*(?P<title>.+?)\t(?P<page>\d+)\s*$")
 BODY_RE = re.compile(r"^【(?P<prov>[^】]{1,6})】\s*(?P<title>.+)$")
@@ -242,7 +243,8 @@ def main():
         if mb:
             body.append((p, mb.group("title")))
 
-    pdf = a.pdf or render_pdf(a.src, os.path.join(os.path.dirname(out) or ".", "_toc_tmp"))
+    # 页码必须按“标点压缩”口径（100 期标准）算，否则与 Word/WPS 的分页对不上
+    pdf = a.pdf or compressed_pdf(a.src, os.path.join(os.path.dirname(out) or ".", "_toc_tmp"))
     texts, feet, first_body = page_numbers(pdf) if pdf else ([], [], 1)
 
     log, used = [], set()

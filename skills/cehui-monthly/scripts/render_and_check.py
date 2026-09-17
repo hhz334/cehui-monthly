@@ -48,6 +48,19 @@ def render(docx_path, outdir, want_png=True):
     soffice = find_soffice()
     env["PATH"] = (os.path.dirname(soffice) + os.pathsep + env.get("PATH", "")) if soffice else env.get("PATH", "")
     env["PYTHONIOENCODING"] = "utf-8"
+    # 版式体检用“标点压缩”口径渲染（与 Word/WPS 分页一致），否则页数/分页会与成刊 PDF 不同
+    try:
+        from render_compressed import compressed_pdf
+        pdf = compressed_pdf(docx_path, os.path.join(outdir, "_compressed"))
+        if pdf:
+            target = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
+            shutil.copyfile(pdf, target)
+            if want_png and renderer:
+                subprocess.run([sys.executable, renderer, docx_path, "--output_dir", outdir, "--emit_pdf"],
+                               env=env, check=False, capture_output=True)
+            return target
+    except Exception:  # noqa: BLE001
+        pass
     if renderer and want_png:
         # documents 技能渲染器：同时产出 PDF 与逐页 PNG 预览
         subprocess.run([sys.executable, renderer, docx_path, "--output_dir", outdir, "--emit_pdf"],
