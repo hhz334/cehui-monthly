@@ -104,6 +104,20 @@ python 99_脚本\40_fix_footer_layout.py "<成刊.docx>"     # 阶段B 已内置
    - 处理：①页脚文本框内段落加 `w:jc=center` 并去掉遗留制表位；②各分节页脚距离统一 1247 twips。
    - 验收：渲染后页脚“— N —”的水平中心＝页面中心（±1pt），各板块距页底一致（58.6pt）。
 
+11. **字体（2026-09-17 用户反馈“导出的 pdf 字体丢失”）**：成刊要求
+    `仿宋_GB2312`（正文）、`楷体_GB2312`（二级标题、来源行）、`黑体`（一级标题）、`方正小标宋简体`（刊名、条目标题）。
+    注意：系统自带的“楷体/KaiTi（simkai.ttf）”**不是** `楷体_GB2312`，缺它时 LibreOffice 会把二级标题顶替成微软雅黑。
+
+```powershell
+python 99_脚本\41_export_pdf.py "<成刊.docx>" -o "<成刊.pdf>"   # 阶段B 已内置，导出前核对字体
+```
+
+   - 缺字体时脚本明确报警，**默认不替换字体名**；确需临时顶替用 `--allow-substitute --map 楷体_GB2312=楷体`。
+   - 装字体：把 `楷体_GB2312.ttf` 放到 `%LOCALAPPDATA%\Microsoft\Windows\Fonts\`，写
+     `HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`，再 `AddFontResourceW` + 广播 `WM_FONTCHANGE`，
+     否则本机已启动的 LibreOffice 仍看不到新字体。
+   - 验收：`pdffonts`/脚本列出的 PDF 字体里应出现 `楷体_GB2312`（子集名常见 `KaiTi_GB2312`），且没有 `MicrosoftYaHei`。
+
 ## 常见问题
 
 - **页码不收敛**：`_make_issue.py` 最多迭代 5 轮；仍不收敛时多半是目录条目文字过长换了行，缩短标题或减少每栏目条数。

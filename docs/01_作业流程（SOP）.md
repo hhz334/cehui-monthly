@@ -250,6 +250,10 @@ python 99_脚本/34_add_toc_links.py "<成刊.docx>" -o "<成刊.docx>"    # 就
     跑 `39_fix_footer_page_cache.py`（阶段B 已内置）刷新缓存并打开“打开时更新域”。
   - **页脚版式**：跑 `40_fix_footer_layout.py`（阶段B 已内置）——页码在页脚文本框内居中、各分节页脚高度统一；
     重建模板时也会自动对模板与 `.dotx` 各跑一次。
+  - **字体**：成刊要求 仿宋_GB2312（正文）、楷体_GB2312（二级标题/来源行）、黑体（一级标题）、方正小标宋简体（刊名）。
+    导出 PDF 用 `41_export_pdf.py`（阶段B 已内置）：先核对本机是否装了这些字体，**缺字体只报警、不悄悄顶替**。
+    本机字体装在 `%LOCALAPPDATA%\Microsoft\Windows\Fonts\`；新装字体后需 `AddFontResource` + 广播 `WM_FONTCHANGE`，
+    否则 LibreOffice 仍按旧字体表渲染。
   - 验收：目录条目链接数＝条目数；抽 3 条比对“目录标注页码＝目标页页脚页码”；**在 WPS 里点 3 条**确认能跳。
 - **成刊两条固定规则（2026-09-17 定）**：
   1. **正文不排“原文链接”行**（链接只留在 `00_资讯目录` 与 `02_原文` 归档）；需要恢复排印时设 `CEHUI_SOURCE_LINK=1` 再重跑阶段B。
@@ -333,6 +337,7 @@ python 99_脚本/28_check_standard_consistency.py    # 标准一致性：文档 
 | WPS 里点目录提示“无法打开指定文件” | 用了 Word 原生 `w:hyperlink w:anchor` 写法，WPS 不认 | 用 `34_add_toc_links.py`（默认 `--style field`）重新生成；域写法 WPS/Word 通用 |
 | WPS 里页脚页码和目录对不上 | 页脚 `PAGE` 域里的**缓存值过期**（模板自带 1/42/60），WPS 默认不重算 | 跑 `39_fix_footer_page_cache.py`（阶段B 已内置）：刷新缓存＋`updateFields` |
 | 页脚页码看着“歪”（偏左、或不同板块高低不一） | 页脚文本框内段落左对齐、且各分节 `pgMar/footer` 不一致（1247 vs 992） | 跑 `40_fix_footer_layout.py`：页码居中＋各节页脚高度统一为 1247 twips |
+| 导出的 PDF 字体不对（如二级标题变成微软雅黑） | 本机缺 `楷体_GB2312`（系统自带的是“楷体/KaiTi”，两者不是同一字体），导出时被顶替 | 把 `楷体_GB2312.ttf` 装进用户字体目录并刷新字体缓存，再用 `41_export_pdf.py` 重导；导出前它会报警 |
 | 成刊正文出现“原文链接：…” / 文末出现“（刘某）” | 固定规则未生效（用了旧版脚本） | 确认 `_build_monthly_issue.py` 调用了 `WL.include_source_link()` 与 `WL.strip_sign_off()`；重跑阶段B |
 | 成刊出现空白页 | 标题前有空段落 + 标题设了“段前分页” | 跑 `38_page_break_per_article.py`（会删掉标题前紧邻空段）；体检项“无空白页”应为 0 |
 | 文章接排、没有一篇一页 | 未启用 R12 | 跑 `38_page_break_per_article.py`，或重跑阶段B（新刊默认一篇一页） |

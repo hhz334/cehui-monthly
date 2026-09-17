@@ -126,15 +126,13 @@ $checkArgs = @((Join-Path $PSScriptRoot "render_and_check.py"), $PeriodDir, "--d
 if ($NoPng) { $checkArgs += "--no-png" }
 & $Python @checkArgs
 $code = $LASTEXITCODE
-# 把渲染出的 PDF 复制到成刊同目录（文件名与成刊一致），随刊交付可点击的 PDF
+# 交付 PDF：用 41 号脚本导出（默认保留原版字体，缺字体时报警），随刊交付可点击的 PDF
 if ($code -eq 0) {
-    $pdf = Get-ChildItem -LiteralPath $outdir -Filter *.pdf -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime | Select-Object -Last 1
-    if ($pdf) {
-        $target = Join-Path ([System.IO.Path]::GetDirectoryName($docx)) ([System.IO.Path]::GetFileNameWithoutExtension($docx) + ".pdf")
-        Copy-Item -LiteralPath $pdf.FullName -Destination $target -Force
-        Write-Host "[交付] PDF：$target"
-    }
+    $target = Join-Path ([System.IO.Path]::GetDirectoryName($docx)) ([System.IO.Path]::GetFileNameWithoutExtension($docx) + ".pdf")
+    Write-Host "[交付] 导出 PDF（原版字体优先）"
+    & $Python (Join-Path $ToolRoot "99_脚本\41_export_pdf.py") $docx -o $target `
+        --report (Join-Path $PeriodDir "_备查\PDF导出字体.md")
+    if (Test-Path $target) { Write-Host "[交付] PDF：$target" }
 }
 if ($code -eq 0) { Write-Host "[完成] 阶段B 结束：$docx" } else { Write-Warning "版式体检未全部通过，请逐项核对。" }
 exit $code
