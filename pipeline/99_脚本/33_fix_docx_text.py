@@ -95,17 +95,19 @@ def main():
     out = a.out or os.path.splitext(a.src)[0] + "_核校版.docx"
     zin = zipfile.ZipFile(a.src)
     changes, total = [], {}
-    zout = None if a.dry_run else zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED)
+    parts = []
     for it in zin.infolist():
         data = zin.read(it.filename)
         if PARTS.match(it.filename):
             data, k = clean_part(data, it.filename, changes)
             if k:
                 total[it.filename] = k
-        if zout is not None:
-            zout.writestr(it, data)
-    if zout is not None:
-        zout.close()
+        parts.append((it, data))
+    # 只有确实改动了才落盘，避免生成一份内容完全相同的“核校版”副本
+    if not a.dry_run and total:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+            for it, data in parts:
+                zout.writestr(it, data)
     for p, notes, old, new in changes:
         print("[%s] %s\n    旧：%s\n    新：%s"
               % (p, "、".join(sorted(set(notes))), old[:80], new[:80]))
