@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from period_config import P  # noqa: E402
 from fetch_utils import RAW, ROOT, load_json  # noqa: E402
 
-BOARDS = ["政策类", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”
+BOARDS = ["政策法规", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”
 FULL = os.path.join(RAW, "full68_selection.json")
 LEADER = os.path.join(RAW, "leader_%s.json" % (P.leader_label or "0917"))
 XLSX = os.path.join(ROOT, "00_资讯目录.xlsx")

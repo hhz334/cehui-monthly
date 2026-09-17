@@ -168,7 +168,7 @@ def main():
                 continue
             summary = re.sub(r"\s+", " ", text).strip()[:180]
             out.append({
-                "module": {"政策类": "政策措施", "技术应用类": "技术应用",
+                "module": {"政策法规": "政策措施", "技术应用类": "技术应用",
                            "科技前沿类": "科技前沿"}[board],
                 "board": board,
                 "business": hits[0][0],
@@ -220,7 +220,7 @@ def main():
             if not hits:
                 continue
             out.append({
-                "module": {"政策类": "政策措施", "技术应用类": "技术应用",
+                "module": {"政策法规": "政策措施", "技术应用类": "技术应用",
                            "科技前沿类": "科技前沿"}[board],
                 "board": board,
                 "business": hits[0][0],
@@ -276,7 +276,7 @@ def main():
             if not hits:
                 continue
             out.append({
-                "module": {"政策类": "政策措施", "技术应用类": "技术应用",
+                "module": {"政策法规": "政策措施", "技术应用类": "技术应用",
                            "科技前沿类": "科技前沿"}[board],
                 "board": board,
                 "business": hits[0][0],

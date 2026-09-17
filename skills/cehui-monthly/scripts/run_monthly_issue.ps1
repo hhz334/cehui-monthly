@@ -8,8 +8,8 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$PeriodDir,
-    [string]$ToolRoot = $env:CEHUI_TOOL_ROOT,          # 工作根目录：内含 99_脚本 与 编制排版
-    [string]$Python = "python",                      # 或 -Python <解释器路径>
+    [string]$ToolRoot = "<工作根 ToolRoot>",
+    [string]$Python = "C:\Users\admin\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe",
     [switch]$RebuildTemplate,
     [switch]$Forward,
     [switch]$NoPng
@@ -18,9 +18,6 @@ param(
 $ErrorActionPreference = "Stop"
 if (-not (Test-Path -LiteralPath $PeriodDir)) { throw "期次目录不存在：$PeriodDir" }
 $PeriodDir = (Resolve-Path -LiteralPath $PeriodDir).Path
-if (-not $ToolRoot) {
-    throw "请用 -ToolRoot 或设置环境变量 CEHUI_TOOL_ROOT 指向工作根目录（内含 99_脚本 与 编制排版）"
-}
 $ScriptDir = Join-Path $ToolRoot "99_脚本"
 $LayoutDir = Join-Path $ToolRoot "编制排版"
 # 解析一个装了依赖的 Python：优先 -Python 参数，其次 CEHUI_PYTHON，再依次探测
@@ -30,10 +27,6 @@ function Resolve-Python {
     foreach ($c in @($Preferred, $env:CEHUI_PYTHON, "python", "python3", "py")) {
         if ($c -and ($cands -notcontains $c)) { $cands += $c }
     }
-    # Codex 桌面版自带的 Python 运行时（若存在，通常已装好依赖）
-    $codexPy = Get-ChildItem "$env:USERPROFILE\.cache\codex-runtimes\*\dependencies\python\python.exe" -ErrorAction SilentlyContinue |
-        Select-Object -First 1 -ExpandProperty FullName
-    if ($codexPy -and ($cands -notcontains $codexPy)) { $cands += $codexPy }
     foreach ($c in $cands) {
         try {
             & $c -c "import pdfplumber, docx, openpyxl, lxml" 2>$null | Out-Null

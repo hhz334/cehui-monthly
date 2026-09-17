@@ -15,16 +15,13 @@ import re
 import subprocess
 import sys
 
-TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT")
-if not TOOL_ROOT:
-    raise SystemExit("请设置 CEHUI_TOOL_ROOT 指向工作根目录（内含 99_脚本 与 编制排版）")
+TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or r"<工作根 ToolRoot>"
 sys.path.insert(0, os.path.join(TOOL_ROOT, "99_脚本"))
 from period_config import P  # noqa: E402
 
 BASE = os.path.join(TOOL_ROOT, "编制排版")
-MEDIA_SKILL = os.environ.get("CEHUI_DOCS_SKILL") or os.path.join(
-    os.path.expanduser("~"), ".codex", "plugins", "cache", "openai-primary-runtime", "documents")
-BOARDS = ["政策类", "技术应用类", "科技前沿类"]
+MEDIA_SKILL = r"C:\Users\admin\.codex\plugins\cache\openai-primary-runtime\documents"
+BOARDS = ["政策法规", "技术应用类", "科技前沿类"]
 
 
 def find_render_docx():

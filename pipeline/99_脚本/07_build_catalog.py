@@ -11,7 +11,7 @@ from fetch_utils import RAW, ROOT, ensure_dir, load_json  # noqa: E402
 from period_config import P  # noqa: E402
 
 CATALOG_DIR = os.path.join(ROOT, "02_原文")
-MODULES = ["政策类", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”
+MODULES = ["政策法规", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”
 LEVEL_ORDER = {"部级": 0, "行业与官媒": 1, "外省": 2}
 SUB_ORDER = ["实景三维", "遥感与影像", "一张图与时空数据", "低空经济与无人机",
              "应急测绘", "调查监测与基础测绘", "北斗与时空基准"]
@@ -173,8 +173,8 @@ def main():
 
     # 归档只保留本期条目（份数 = 目录条数）；上一版内容见《_备查/全量底稿（<采集范围>）.md》
     removed = 0
-    # 连同已取消板块（如“媒体动态类”）的归档目录一起清理
-    for board in MODULES + ["媒体动态类"]:
+    # 连同已取消／改名的板块目录（媒体动态类、旧名“政策类”）一起清理
+    for board in MODULES + ["媒体动态类", "政策类"]:
         folder = os.path.join(CATALOG_DIR, board)
         if not os.path.isdir(folder):
             continue

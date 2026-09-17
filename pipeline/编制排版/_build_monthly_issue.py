@@ -30,7 +30,7 @@ TOC_MAP = os.path.join(BASE, "_tmpl_tmp", "toc_pages.json")
 OUT = os.environ.get("ISSUE_OUT") or os.path.join(BASE, P.issue_file_stem + ".docx")
 os.makedirs(os.path.dirname(OUT) or BASE, exist_ok=True)   # 全新环境下没有 _tmpl_tmp 时自动创建
 
-BOARDS = ["政策类", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”，改为三栏目
+BOARDS = ["政策法规", "技术应用类", "科技前沿类"]      # 2026-09-17 起取消“媒体动态类”，改为三栏目
 # 正文一律用全文：02_原文 归档与选目里的"原文正文"本就是原发布方全文，
 # 此前 1500 字的节选是排版时人为截断，现取消。
 CAP = None

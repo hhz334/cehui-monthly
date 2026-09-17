@@ -2,7 +2,7 @@
 """按新口径重建本期选目：三个板块 + 10 条业务条线 + 来源白名单核验。
 
 做四件事：
-1. 归并三板块（国家公文并入政策类，会议报告与跨界融合按主题归入技术应用／科技前沿，
+1. 归并三板块（国家公文并入政策法规，会议报告与跨界融合按主题归入技术应用／科技前沿，
    经验做法稿归技术应用类；2026-09-17 起取消“媒体动态类”）；
 2. 国际、科普与版图宣传、福建三类条目移入《_备查/未收录条目.md》；
 3. 逐条做来源白名单核验，公众号不在白名单或无法回溯原发布方的移入《_备查/周讯回溯待办.md》；
@@ -27,7 +27,7 @@ MANUAL_SEL = os.path.join(RAW, "manual_includes.json")
 OUT_SEL = os.path.join(HERE, "catalog_selection_boards.json")
 BACKUP_DIR = os.path.join(ROOT, "_备查")
 
-# v2 里被剥离进《06_国家政策文件附录》的国家公文，新口径下回到政策类
+# v2 里被剥离进《06_国家政策文件附录》的国家公文，新口径下回到政策法规
 APPENDIX_TITLES = [
     "关于征求《政务服务平台政务服务地图建设技术规范》",
     "绿色勘查绿色矿山系列国家标准发布",
@@ -212,7 +212,7 @@ def main():
             continue
         board = sel.get("board") or WL.board_of(module, title, sel.get("summary", ""), note)
         if sel.get("restored_from_appendix"):
-            board = "政策类"
+            board = "政策法规"
         hits = WL.business_of(title, sel.get("summary", ""), sel.get("keywords", ""))
         out = dict(sel)
         out.update({
@@ -235,7 +235,7 @@ def main():
     # ---- 备查清单 ----
     ensure_dir(BACKUP_DIR)
     lines = ["# 未收录条目（备查）", "",
-             "- 口径：只保留政策类、技术应用类、科技前沿类三个板块（取消“媒体动态类”，经验做法稿归技术应用类）；"
+             "- 口径：只保留政策法规、技术应用类、科技前沿类三个板块（取消“媒体动态类”，经验做法稿归技术应用类）；"
              "国际、科普与版图宣传、福建本地内容不进目录；领导终稿（0917）删除的条目一并列在文末。",
              f"- 条数：{len(backup)}", "", "| 序号 | 标题 | 原模块 | 层级 | 不收录理由 |",
              "| --- | --- | --- | --- | --- |"]

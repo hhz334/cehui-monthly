@@ -8,16 +8,10 @@ import sys
 
 import pdfplumber
 
-BASE = os.path.dirname(os.path.abspath(__file__))          # 编制排版目录
-PY = os.environ.get("CEHUI_PYTHON") or sys.executable
-# 渲染器（documents 技能自带 render_docx.py）；可用 CEHUI_DOCS_SKILL 覆盖
-def _find_render_docx():
-    import glob
-    root = os.environ.get("CEHUI_DOCS_SKILL") or os.path.join(
-        os.path.expanduser("~"), ".codex", "plugins", "cache", "openai-primary-runtime", "documents")
-    hits = sorted(glob.glob(os.path.join(root, "*", "skills", "documents", "render_docx.py")))
-    return hits[-1] if hits else os.path.join(root, "render_docx.py")
-TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or os.path.dirname(BASE)
+BASE = r"D:\工作文件\团委\测绘动态\编制排版"
+PY = r"C:\Users\admin\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+SKILL = r"C:\Users\admin\.codex\plugins\cache\openai-primary-runtime\documents\26.909.12148\skills\documents"
+TOOL_ROOT = os.environ.get("CEHUI_TOOL_ROOT") or r"D:\工作文件\团委\测绘动态"
 sys.path.insert(0, os.path.join(TOOL_ROOT, "99_脚本"))
 from period_config import P  # noqa: E402
 
@@ -44,8 +38,8 @@ def render(tag):
     out = os.path.join(WORK, tag)
     os.makedirs(out, exist_ok=True)
     env = dict(os.environ)
-    env["PATH"] = os.environ.get("CEHUI_SOFFICE_DIR", r"C:\Program Files\LibreOffice\program") + ";" + env.get("PATH", "")
-    subprocess.run([PY, _find_render_docx(), DOCX,
+    env["PATH"] = r"C:\Program Files\LibreOffice\program;" + env.get("PATH", "")
+    subprocess.run([PY, os.path.join(SKILL, "render_docx.py"), DOCX,
                     "--output_dir", out, "--emit_pdf"],
                    check=True, capture_output=True, env=env)
     return os.path.join(out, os.path.basename(DOCX).replace(".docx", ".pdf"))

@@ -17,6 +17,7 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fetch_utils import RAW, ROOT, ensure_dir, save_json  # noqa: E402
+import sources_whitelist as WL  # noqa: E402
 
 from lxml import etree  # noqa: E402
 
@@ -28,7 +29,7 @@ OUT_MD = os.path.join(ROOT, "_备查", "领导批注规则（0916）.md")
 LABEL = "0916"
 # 兼容历史批注版：0916 版含“媒体动态类”，0917 版起只有三个板块；
 # 这里保留四个名字用于识别不同版本文件里的栏目标题。
-BOARDS = ("政策类", "技术应用类", "科技前沿类", "媒体动态类")
+BOARDS = ("政策法规", "技术应用类", "科技前沿类", "媒体动态类")
 
 # 删除原因分类（与口径 R1/R2 对齐）
 REASONS = [
@@ -82,9 +83,9 @@ def parse_items(lines):
     for l in lines:
         if not l:
             continue
-        m = re.match(r"^(%s)（\s*\d*\s*条）$" % "|".join(BOARDS), l)
+        m = re.match(r"^(%s)（\s*\d*\s*条）$" % "|".join(BOARDS + ("政策类", "媒体动态类")), l)
         if m:
-            sec = m.group(1)
+            sec = WL.board_name(m.group(1))      # 旧板块名（如“政策类”）归一为现行名
             continue
         m1 = re.match(r"^(\d{1,3})?\.?\s*【(.+?)】\s*(.+)$", l)
         m2 = re.match(r"^(\d{2})(\d{2})\s{1,3}(.+)$", l)

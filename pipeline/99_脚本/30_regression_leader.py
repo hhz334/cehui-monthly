@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LEADER = os.path.join(RAW, "leader_%s.json" % (P.leader_label or "0917"))
 DRAFT = os.path.join(P.sel_dir, "catalog_selection_draft.json")
 OUT = os.path.join(ROOT, "_备查", "领导版回归测试.md")
-BOARDS = ["政策类", "技术应用类", "科技前沿类"]
+BOARDS = ["政策法规", "技术应用类", "科技前沿类"]
 
 
 def norm(t):
@@ -136,12 +136,12 @@ def main():
     report.append("")
 
     totals = {b: sum(1 for s in draft if s["board"] == b) for b in BOARDS}
-    pol = totals["政策类"] + totals["科技前沿类"]
+    pol = totals["政策法规"] + totals["科技前沿类"]
     tm = totals["技术应用类"]
     n = max(1, len(draft))
     report += ["## 五、规模与比例（三板块）", "",
                "- 选目共 **%d** 条｜板块：%s" % (len(draft), "、".join("%s %d" % (b, totals[b]) for b in BOARDS)),
-               "- 政策类＋科技前沿类 %d 条（%.0f%%）｜技术应用类 %d 条（%.0f%%）"
+               "- 政策法规＋科技前沿类 %d 条（%.0f%%）｜技术应用类 %d 条（%.0f%%）"
                % (pol, 100 * pol / n, tm, 100 * tm / n),
                "- 本期为领导终稿直出（16 条）；下期起按三板块走两级产出：初版约 35 条、终稿 20—25 条", ""]
 

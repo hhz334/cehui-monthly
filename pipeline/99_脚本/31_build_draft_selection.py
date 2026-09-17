@@ -28,14 +28,14 @@ SEL_FINAL = os.path.join(RAW, "full68_selection.json")
 OUT = os.path.join(P.sel_dir, "catalog_selection_draft.json")
 REPORT = os.path.join(ROOT, "_备查", P.data.get("selection_report") or "终稿16条构成说明.md")
 
-BOARDS = ["政策类", "技术应用类", "科技前沿类"]
+BOARDS = ["政策法规", "技术应用类", "科技前沿类"]
 # 产出模式：DIRECT_FINAL=True 为“领导终稿直出”（本期），False 为初版补位（下期起）
 DIRECT_FINAL = True
 TARGET_TOTAL = 16 if DIRECT_FINAL else 35
-# 下期初版目标构成（三板块、35 条时）：政策类＋科技前沿类约 31%、技术应用类约 69%
-TARGET_BOARD = {"政策类": 6, "技术应用类": 24, "科技前沿类": 5}
+# 下期初版目标构成（三板块、35 条时）：政策法规＋科技前沿类约 31%、技术应用类约 69%
+TARGET_BOARD = {"政策法规": 6, "技术应用类": 24, "科技前沿类": 5}
 # 初版补充按三板块粗筛（不设二级分类）；终稿直出时为空
-BOARD_PLAN = [] if DIRECT_FINAL else [("政策类", 6), ("技术应用类", 24), ("科技前沿类", 5)]
+BOARD_PLAN = [] if DIRECT_FINAL else [("政策法规", 6), ("技术应用类", 24), ("科技前沿类", 5)]
 # 论文／国际奖项与“论文摘选”通道已停用：这两类来源不再参与候选
 EXCLUDE_SOURCE_IDS = ("frontier", "csgpc_lwzx")
 EXPERIENCE = re.compile(r"探索|实践|做法|经验|织密|打造|新范式|新路径|纪实|担当|样本|亮点|走在前")
@@ -185,7 +185,7 @@ def main():
                 "source_url_checked": (urls[0] if (urls and acceptable_source(urls[0]))
                                        else base.get("source_url_checked") or (urls[0] if urls else "")),
                 "date_override": base.get("date_override") or it.get("added_date") or "",
-                "priority": base.get("priority") or ("A" if board == "政策类" else "B"),
+                "priority": base.get("priority") or ("A" if board == "政策法规" else "B"),
                 "business": base.get("business") or "",
                 "summary": it.get("summary") or base.get("摘要") or "",
                 "原文正文": text, "is_skeleton": True,
@@ -356,14 +356,14 @@ def main():
     save_json(OUT, selected)
 
     totals = {b: sum(1 for s in selected if s["board"] == b) for b in BOARDS}
-    pol = totals["政策类"] + totals["科技前沿类"]
+    pol = totals["政策法规"] + totals["科技前沿类"]
     tm = totals["技术应用类"]
     n = max(1, len(selected))
     n_skel = sum(1 for s in selected if s["is_skeleton"])
     lines = [f"# 选目构成说明（{P.title_range}，三板块）", "",
              "- 产出模式：**领导终稿直出**（本期不补位）；骨架 = 领导 0917 批注版 %d 条（顺序按领导版）" % n_skel,
              "- 骨架调整：剔除 %d 条、板块迁移 %d 条（本期均无）" % (len(dropped), len(moved)),
-             "- 合计：**%d 条**｜政策类＋科技前沿类 %d 条（%.0f%%）｜技术应用类 %d 条（%.0f%%）"
+             "- 合计：**%d 条**｜政策法规＋科技前沿类 %d 条（%.0f%%）｜技术应用类 %d 条（%.0f%%）"
              % (len(selected), pol, 100 * pol / n, tm, 100 * tm / n),
              "- 板块构成：%s" % "、".join("%s %d" % (b, totals[b]) for b in BOARDS), "",
              "> 口径说明：2026-09-17 起取消“媒体动态类”，原该类经验做法稿归技术应用类；"
@@ -394,7 +394,7 @@ def main():
         c = sum(1 for s in added if s["board"] == b)
         lines.append("| %s | %d | %d | %d |" % (b, a, c, a + c))
     lines += ["", "## 五、类内排序规则（本期起固定）", "",
-              "1. 板块序：政策类 → 技术应用类 → 科技前沿类。",
+              "1. 板块序：政策法规 → 技术应用类 → 科技前沿类。",
               "2. 层级：部级 → 行业与官媒 → 外省（国家到地方）。",
               "3. 业务中心度（依本中心党组半年工作情况汇报章节，中心到边缘）：实景三维建设 → 测绘基准服务 → "
               "测绘地理信息公共服务 → 测绘科技创新与关键技术攻关 → 应急测绘保障 → 自然资源调查监测技术支撑 → "
