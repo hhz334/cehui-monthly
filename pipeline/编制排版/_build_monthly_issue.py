@@ -11,6 +11,7 @@ import re
 import sys
 
 import docx
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
@@ -167,6 +168,12 @@ def main():
         m = re.match(r"^(.{0,24}?[：:])(.+)$", line)
         return (m.group(1), m.group(2)) if m else ("", line)
 
+    def split_heading(line, max_len=40):
+        """标题与正文写在同一段时（如“（一）加快构建国家数字空间基准。一是……”），
+        只把到第一个句号为止的标题部分按标题排版，其余按正文排版。"""
+        m = re.match(r"^(.{1,%d}?。)(.+)$" % max_len, line)
+        return (m.group(1), m.group(2)) if m else (line, "")
+
     pat_toc = find(lambda p: (p.style.name or "").startswith("WPSOffice手动目录"), "目录条目")
     pat_head = find(lambda p: bool(p.runs) and east_font(p).startswith("黑体")
                     and (p.text or "").strip()[:2] in ("一、", "二、", "三、", "四、"), "栏目名")
@@ -206,6 +213,24 @@ def main():
             runs2 = docx.text.paragraph.Paragraph(el, d).runs
             runs2[-1].text = rest
             runs2[-1].font.bold = None              # 只有标签部分加粗
+        return el
+
+    def clone_heading(pattern, label, rest):
+        """一级/二级标题：标题部分沿用标题格式，其后同段的正文用正文格式（仿宋小四不加粗）。"""
+        el = copy.deepcopy(pattern)
+        par = docx.text.paragraph.Paragraph(el, d)
+        set_text(par, label)
+        if rest:
+            tpl_par = docx.text.paragraph.Paragraph(pat_body, d)
+            tpl_rpr = tpl_par.runs[0]._element.find(qn("w:rPr")) if tpl_par.runs else None
+            r2 = OxmlElement("w:r")
+            if tpl_rpr is not None:
+                r2.append(copy.deepcopy(tpl_rpr))     # 采用正文样板的字体/字号/加粗
+            t = OxmlElement("w:t")
+            t.set(qn("xml:space"), "preserve")
+            t.text = rest
+            r2.append(t)
+            par._p.append(r2)
         return el
 
     # ---- 定位分节符 ----
@@ -249,9 +274,11 @@ def main():
             for seg in body_paragraphs(text[:CAP] if truncated else text):
                 lvl = level_of(seg)
                 if lvl == "h1" and pat_h1:
-                    newelems.append(clone(pat_h1, seg))
+                    label, rest = split_heading(seg)
+                    newelems.append(clone_heading(pat_h1, label, rest))
                 elif lvl == "h2" and pat_h2:
-                    newelems.append(clone(pat_h2, seg))
+                    label, rest = split_heading(seg)
+                    newelems.append(clone_heading(pat_h2, label, rest))
                 elif lvl == "h3" and pat_h3:
                     label, rest = split_h3(seg)
                     newelems.append(clone_h3(pat_h3, label, rest))

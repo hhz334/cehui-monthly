@@ -10,7 +10,7 @@
 
 **一句话链路**：设置期次与窗口 → 官网采集 → 专用通道采集 → 周讯对标（只作线索）→ 自动初筛 → 三板块重建与业务条线打标 → 来源实体校验与原文复检 → 成稿 → 多方式核实 → 交付。
 
-**技能化入口（2026-09-17 起）**：本流程已封装为技能 `cehui-monthly`（`~/.codex/skills/cehui-monthly\`），
+**技能化入口（2026-09-17 起）**：本流程已封装为技能 `cehui-monthly`（`C:\Users\admin\.codex\skills\cehui-monthly\`），
 分两块执行，日常不必手敲脚本：
 
 > 对外公开仓库：<https://github.com/hhz334/cehui-monthly>（含技能、工具链与口径文档，可整包下载或 `git clone`；
@@ -18,10 +18,10 @@
 
 ```powershell
 # 阶段A 初稿目录生成（采集→初筛→批注回灌→核验→目录与原文归档→Word 交付件→自检）
-powershell -File "~/.codex/skills/cehui-monthly\scripts\run_draft_catalog.ps1" -PeriodDir "<期次目录>"
+powershell -File "C:\Users\admin\.codex\skills\cehui-monthly\scripts\run_draft_catalog.ps1" -PeriodDir "<期次目录>"
 
 # 阶段B 月刊排版（校验定稿选目→出刊→渲染 PDF/预览→版式体检）
-powershell -File "~/.codex/skills/cehui-monthly\scripts\run_monthly_issue.ps1" -PeriodDir "<期次目录>"
+powershell -File "C:\Users\admin\.codex\skills\cehui-monthly\scripts\run_monthly_issue.ps1" -PeriodDir "<期次目录>"
 ```
 
 常用参数：阶段A `-Only 07,14,32,17`／`-From 25`／`-SkipWeekly`／`-LeaderDoc <批注版.doc> -LeaderLabel 0917`；
@@ -222,6 +222,8 @@ python 99_脚本/17_make_docx.py
 - **正文三级格式（2026-09-17 依《政策要情》第 100 期核对）**：一级标题黑体小四、二级标题楷体_GB2312 小四加粗、
   正文小标题仿宋_GB2312 小四加粗（仅“标签：”加粗）、正文仿宋_GB2312 小四；`_build_monthly_issue.py` 按行首
   `一、`／`（一）`／`1.` 自动分级。改版后务必重跑 `_build_monthly_template.py` 并抽检三级的字体字号。
+- **标题与正文同段**：如“（一）加快构建国家数字空间基准。一是……”，只有到第一个句号为止的标题部分用标题格式，
+  其后内容按正文（仿宋_GB2312 小四不加粗）排版；`一、` 与 `（一）` 两级同样处理。
 
 ### S11 收尾自检（0.2 天）
 
